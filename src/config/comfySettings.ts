@@ -51,6 +51,6 @@ export class ComfySettings {
 
   set<K extends keyof ComfySettingsData>(key: K, value: ComfySettingsData[K]) {
     this.settings[key] = value;
-    this.saveSettings()
+    this.saveSettings();
   }
 }

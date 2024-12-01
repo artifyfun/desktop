@@ -18,7 +18,7 @@ class SentryLogging {
 
         if (
           event.extra?.comfyUIExecutionError ||
-          this.comfyDesktopApp?.comfySettings.get('Comfy-Desktop.SendStatistics') || 
+          this.comfyDesktopApp?.comfySettings.get('Comfy-Desktop.SendStatistics') ||
           alwaysSendCrashReports
         ) {
           return event;
@@ -36,7 +36,7 @@ class SentryLogging {
         });
 
         if (response === 1) {
-          this.comfyDesktopApp?.comfySettings?.set('Comfy-Desktop.AlwaysSendCrashReports', true)
+          this.comfyDesktopApp?.comfySettings?.set('Comfy-Desktop.AlwaysSendCrashReports', true);
         }
 
         return response !== 2 ? event : null;
