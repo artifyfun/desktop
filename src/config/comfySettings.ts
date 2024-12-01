@@ -5,6 +5,7 @@ import log from 'electron-log/main';
 export const DEFAULT_SETTINGS: ComfySettingsData = {
   'Comfy-Desktop.AutoUpdate': true,
   'Comfy-Desktop.SendStatistics': true,
+  'Comfy-Desktop.AlwaysSendCrashReports': false,
   'Comfy.ColorPalette': 'dark',
   'Comfy.UseNewMenu': 'Top',
   'Comfy.Workflow.WorkflowTabsPosition': 'Topbar',
@@ -15,6 +16,7 @@ export const DEFAULT_SETTINGS: ComfySettingsData = {
 export interface ComfySettingsData {
   'Comfy-Desktop.AutoUpdate': boolean;
   'Comfy-Desktop.SendStatistics': boolean;
+  'Comfy-Desktop.AlwaysSendCrashReports': boolean;
   'Comfy.Server.LaunchArgs': Record<string, string>;
   [key: string]: unknown;
 }
@@ -39,11 +41,16 @@ export class ComfySettings {
     this.settings = JSON.parse(fileContent);
   }
 
+  public saveSettings() {
+    fs.writeFileSync(this.filePath, JSON.stringify(this.settings), 'utf-8');
+  }
+
   get<K extends keyof ComfySettingsData>(key: K): ComfySettingsData[K] {
     return this.settings[key] ?? DEFAULT_SETTINGS[key];
   }
 
   set<K extends keyof ComfySettingsData>(key: K, value: ComfySettingsData[K]) {
     this.settings[key] = value;
+    this.saveSettings()
   }
 }
