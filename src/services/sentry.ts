@@ -14,7 +14,7 @@ class SentryLogging {
       beforeSend: async (event) => {
         this.filterEvent(event);
 
-        const alwaysSendCrashReports = this.comfyDesktopApp?.comfySettings?.get('Comfy-Desktop.AlwaysSendCrashReports');
+        const alwaysSendCrashReports = this.comfyDesktopApp?.appWindow?.store?.get('alwaysSendCrashReports', false);
 
         if (
           event.extra?.comfyUIExecutionError ||
@@ -36,7 +36,7 @@ class SentryLogging {
         });
 
         if (response === 1) {
-          this.comfyDesktopApp?.comfySettings?.set('Comfy-Desktop.AlwaysSendCrashReports', true);
+          this.comfyDesktopApp?.appWindow?.store?.set('alwaysSendCrashReports', true);
         }
 
         return response !== 2 ? event : null;
