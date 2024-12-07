@@ -1,14 +1,13 @@
 const { spawnSync } = require("child_process");
 const path = require("path");
 const os = require('os');
-
-module.exports = async ({ pkgJsonPath, pkgJson, appDir, hookName }) => {
-    /**
- * pkgJsonPath - string - path to the package.json file
- * pkgJson - object - the parsed package.json file
- * appDir - string - the path to the app directory
- * hookName - string - the name of the hook ("todesktop:beforeInstall" or "todesktop:afterPack")
+/**
+ * @param {string} pkgJsonPath path to the package.json file
+ * @param {object} pkgJson the parsed package.json file
+ * @param {string} appDir the path to the app directory
+ * @param {string} hookName the name of the hook ("todesktop:beforeInstall" or "todesktop:afterPack")
  */
+module.exports = async ({ pkgJsonPath, pkgJson, appDir, hookName }) => {
 
     console.log('Before Yarn Install' , os.platform());
 
