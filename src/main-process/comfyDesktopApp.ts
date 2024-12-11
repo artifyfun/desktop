@@ -120,6 +120,19 @@ export class ComfyDesktopApp {
       log.info('Reinstalling...');
       this.reinstall();
     });
+    ipcMain.handle(IPC_CHANNELS.CHECK_FOR_UPDATES, async () => {
+      log.info('Checking for updates ...');
+
+      try {
+        const result = await todesktop.autoUpdater?.checkForUpdates();
+        if (result?.updateInfo) {
+          log.info('Update found:', result.updateInfo.version);
+          todesktop.autoUpdater?.restartAndInstall();
+        }
+      } catch (e) {
+        log.error('Update check failed:', e);
+      }
+    });
     ipcMain.handle(IPC_CHANNELS.SEND_ERROR_TO_SENTRY, async (_event, { error, extras }): Promise<string | null> => {
       try {
         return Sentry.captureMessage(error, {

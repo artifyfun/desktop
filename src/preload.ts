@@ -71,6 +71,9 @@ const electronAPI = {
   reinstall: () => {
     return ipcRenderer.invoke(IPC_CHANNELS.REINSTALL);
   },
+  checkForUpdates: () => {
+    return ipcRenderer.invoke(IPC_CHANNELS.CHECK_FOR_UPDATES);
+  },
   openDialog: (options: Electron.OpenDialogOptions) => {
     return ipcRenderer.invoke(IPC_CHANNELS.OPEN_DIALOG, options);
   },

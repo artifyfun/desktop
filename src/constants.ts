@@ -4,6 +4,7 @@ export const IPC_CHANNELS = {
   RENDERER_READY: 'renderer-ready',
   RESTART_APP: 'restart-app',
   REINSTALL: 'reinstall',
+  CHECK_FOR_UPDATES: 'check-for-updates',
   LOG_MESSAGE: 'log-message',
   OPEN_DIALOG: 'open-dialog',
   DOWNLOAD_PROGRESS: 'download-progress',
