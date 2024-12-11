@@ -74,6 +74,9 @@ const electronAPI = {
   checkForUpdates: () => {
     return ipcRenderer.invoke(IPC_CHANNELS.CHECK_FOR_UPDATES);
   },
+  getOsPlatform: (): Promise<string> => {
+    return ipcRenderer.invoke(IPC_CHANNELS.GET_OS_PLATFORM);
+  },
   openDialog: (options: Electron.OpenDialogOptions) => {
     return ipcRenderer.invoke(IPC_CHANNELS.OPEN_DIALOG, options);
   },

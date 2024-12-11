@@ -1,7 +1,7 @@
 import { app, dialog, ipcMain, type Point } from 'electron';
 import log from 'electron-log/main';
 import * as Sentry from '@sentry/electron/main';
-import { graphics } from 'systeminformation';
+import { graphics, osInfo } from 'systeminformation';
 import todesktop from '@todesktop/runtime';
 import { IPC_CHANNELS, ProgressStatus, ServerArgs } from '../constants';
 import { ComfySettings } from '../config/comfySettings';
@@ -9,6 +9,7 @@ import { AppWindow } from './appWindow';
 import { ComfyServer } from './comfyServer';
 import { ComfyServerConfig } from '../config/comfyServerConfig';
 import fs from 'fs';
+import os from 'os';
 import { InstallOptions, type ElectronContextMenuOptions } from '../preload';
 import path from 'path';
 import { getModelsDirectory, validateHardware } from '../utils';
@@ -133,6 +134,7 @@ export class ComfyDesktopApp {
         log.error('Update check failed:', e);
       }
     });
+    ipcMain.handle(IPC_CHANNELS.GET_OS_PLATFORM, () => Promise.resolve(os.platform()));
     ipcMain.handle(IPC_CHANNELS.SEND_ERROR_TO_SENTRY, async (_event, { error, extras }): Promise<string | null> => {
       try {
         return Sentry.captureMessage(error, {

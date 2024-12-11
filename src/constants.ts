@@ -32,6 +32,7 @@ export const IPC_CHANNELS = {
   SHOW_DIRECTORY_PICKER: 'show-directory-picker',
   INSTALL_COMFYUI: 'install-comfyui',
   SHOW_CONTEXT_MENU: 'show-context-menu',
+  GET_OS_PLATFORM: 'get-os-platform',
 } as const;
 
 export enum ProgressStatus {
