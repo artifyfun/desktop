@@ -7,6 +7,8 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import log from 'electron-log/main';
 
+export const ansiCodes = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
+
 export async function pathAccessible(path: string): Promise<boolean> {
   try {
     await fsPromises.access(path);
@@ -115,6 +117,10 @@ export async function validateHardware(): Promise<HardwareValidation> {
     if (process.platform === 'win32') {
       const graphics = await si.graphics();
       const hasNvidia = graphics.controllers.some((controller) => controller.vendor.toLowerCase().includes('nvidia'));
+
+      if (process.env.CI) {
+        return { isValid: true }; // Temporary workaround for testing with Playwright
+      }
 
       if (!hasNvidia) {
         try {

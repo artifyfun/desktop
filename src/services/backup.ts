@@ -7,6 +7,7 @@ import { getAppResourcesPath } from '../install/resourcePaths';
 import log from 'electron-log/main';
 import { AppWindow } from '../main-process/appWindow';
 import { IPC_CHANNELS } from '../constants';
+import { ansiCodes } from '../utils';
 
 function parseLogFile(logPath: string): Set<string> {
   console.log('Parsing log file:', logPath);
@@ -72,12 +73,8 @@ async function installCustomNodes(
       '--no-deps',
     ];
     const { exitCode } = await virtualEnvironment.runPythonCommandAsync(cmd, {
-      onStdout: (data) => {
-        log.info(data.toString());
-      },
-      onStderr: (data) => {
-        log.error(data.toString());
-      },
+      onStdout: (data) => log.info(data.toString().replaceAll(ansiCodes, '')),
+      onStderr: (data) => log.error(data.toString().replaceAll(ansiCodes, '')),
     });
     if (exitCode !== 0) {
       log.error(`Failed to install custom nodes: ${exitCode}`);
