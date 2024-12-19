@@ -110,6 +110,7 @@ interface HardwareValidation {
  * Validate the system hardware requirements for ComfyUI.
  */
 export async function validateHardware(): Promise<HardwareValidation> {
+  log.verbose('Validating hardware.');
   try {
     // Only ARM Macs are supported.
     if (process.platform === 'darwin') {
