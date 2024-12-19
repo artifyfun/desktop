@@ -9,12 +9,11 @@ import { AppWindow } from './appWindow';
 import { ComfyServer } from './comfyServer';
 import { ComfyServerConfig } from '../config/comfyServerConfig';
 import fs from 'node:fs';
-import { InstallOptions, type ElectronContextMenuOptions } from '../preload';
+import { type ElectronContextMenuOptions } from '../preload';
 import path from 'node:path';
-import { ansiCodes, getModelsDirectory, validateHardware } from '../utils';
+import { ansiCodes, getModelsDirectory } from '../utils';
 import { DownloadManager } from '../models/DownloadManager';
 import { ProcessCallbacks, VirtualEnvironment } from '../virtualEnvironment';
-import { InstallWizard } from '../install/installWizard';
 import { Terminal } from '../shell/terminal';
 import { DesktopConfig, useDesktopConfig } from '../store/desktopConfig';
 import { InstallationValidator } from '../install/installationValidator';
@@ -155,48 +154,6 @@ export class ComfyDesktopApp {
     });
   }
 
-  /**
-   * Install ComfyUI and return the base path.
-   */
-  static async install(appWindow: AppWindow): Promise<string> {
-    const config = useDesktopConfig();
-    if (!config.get('installState')) config.set('installState', 'started');
-
-    const validation = await validateHardware();
-    if (typeof validation?.gpu === 'string') config.set('detectedGpu', validation.gpu);
-
-    if (!validation.isValid) {
-      await appWindow.loadRenderer('not-supported');
-      log.error(validation.error);
-    } else {
-      await appWindow.loadRenderer('welcome');
-    }
-
-    return new Promise<string>((resolve, reject) => {
-      ipcMain.on(IPC_CHANNELS.INSTALL_COMFYUI, (_event, installOptions: InstallOptions) => {
-        const installWizard = new InstallWizard(installOptions);
-        useDesktopConfig().set('basePath', installWizard.basePath);
-
-        const { device } = installOptions;
-        if (device !== undefined) {
-          useDesktopConfig().set('selectedDevice', device);
-        }
-
-        installWizard
-          .install()
-          .then(() => {
-            useDesktopConfig().set('installState', 'installed');
-            appWindow.maximize();
-            if (installWizard.shouldMigrateCustomNodes && installWizard.migrationSource) {
-              useDesktopConfig().set('migrateCustomNodesFrom', installWizard.migrationSource);
-            }
-            resolve(installWizard.basePath);
-          })
-          .catch(reject);
-      });
-    });
-  }
-
   async startComfyServer(serverArgs: ServerArgs) {
     app.on('before-quit', () => {
       if (!this.comfyServer) {
@@ -278,14 +235,7 @@ export class ComfyDesktopApp {
     return customNodeMigrationError;
   }
 
-  static async create(appWindow: AppWindow): Promise<ComfyDesktopApp> {
-    // Migrate settings from old version if required
-    const installState = useDesktopConfig().get('installState') ?? (await ComfyDesktopApp.migrateInstallState());
-
-    // Fresh install
-    const loadedPath = installState === undefined ? undefined : await ComfyDesktopApp.loadBasePath();
-    const basePath = loadedPath ?? (await ComfyDesktopApp.install(appWindow));
-
+  static create(appWindow: AppWindow, basePath: string): ComfyDesktopApp {
     return new ComfyDesktopApp(basePath, new ComfySettings(basePath), appWindow);
   }
 
