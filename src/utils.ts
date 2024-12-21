@@ -19,6 +19,16 @@ export async function pathAccessible(path: string): Promise<boolean> {
   }
 }
 
+export async function containsDirectory(path: string, contains: string): Promise<boolean> {
+  if (await pathAccessible(path)) {
+    const contents = await fsPromises.readdir(path, { withFileTypes: true });
+    for (const item of contents) {
+      if (item.name === contains && item.isDirectory()) return true;
+    }
+  }
+  return false;
+}
+
 export function getModelsDirectory(comfyUIBasePath: string): string {
   return path.join(comfyUIBasePath, 'models');
 }
