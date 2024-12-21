@@ -124,32 +124,29 @@ If this problem persists, back up and delete the config file, then restart the a
       await appWindow.loadRenderer('welcome');
     }
 
-    return new Promise<void>((resolve, reject) => {
+    const installOptions = await new Promise<InstallOptions>((resolve) => {
       ipcMain.on(IPC_CHANNELS.INSTALL_COMFYUI, (_event, installOptions: InstallOptions) => {
         log.verbose('Received INSTALL_COMFYUI.');
-        const installWizard = new InstallWizard(installOptions);
-        useDesktopConfig().set('basePath', installWizard.basePath);
-
-        const { device } = installOptions;
-        if (device !== undefined) {
-          useDesktopConfig().set('selectedDevice', device);
-        }
-
-        installWizard
-          .install()
-          .then(() => {
-            this.setState('installed');
-            appWindow.maximize();
-            if (installWizard.shouldMigrateCustomNodes && installWizard.migrationSource) {
-              useDesktopConfig().set('migrateCustomNodesFrom', installWizard.migrationSource);
-            }
-            this.isValid = true;
-            this.basePath = installWizard.basePath;
-            resolve();
-          })
-          .catch(reject);
+        resolve(installOptions);
       });
     });
+
+    const installWizard = new InstallWizard(installOptions);
+    useDesktopConfig().set('basePath', installWizard.basePath);
+
+    const { device } = installOptions;
+    if (device !== undefined) {
+      useDesktopConfig().set('selectedDevice', device);
+    }
+
+    await installWizard.install();
+    this.setState('installed');
+    appWindow.maximize();
+    if (installWizard.shouldMigrateCustomNodes && installWizard.migrationSource) {
+      useDesktopConfig().set('migrateCustomNodesFrom', installWizard.migrationSource);
+    }
+    this.isValid = true;
+    this.basePath = installWizard.basePath;
   }
 
   upgrade(validation: ValidationResult) {
