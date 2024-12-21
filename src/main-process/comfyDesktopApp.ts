@@ -16,7 +16,6 @@ import { DownloadManager } from '../models/DownloadManager';
 import { ProcessCallbacks, VirtualEnvironment } from '../virtualEnvironment';
 import { Terminal } from '../shell/terminal';
 import { DesktopConfig, useDesktopConfig } from '../store/desktopConfig';
-import { InstallationValidator } from '../install/installationValidator';
 import { restoreCustomNodes } from '../services/backup';
 import { CmCli } from '../services/cmCli';
 
@@ -237,59 +236,6 @@ export class ComfyDesktopApp {
 
   static create(appWindow: AppWindow, basePath: string): ComfyDesktopApp {
     return new ComfyDesktopApp(basePath, new ComfySettings(basePath), appWindow);
-  }
-
-  /**
-   * Sets the ugpraded state if this is a version upgrade from <= 0.3.18
-   * @returns 'upgraded' if this install has just been upgraded, or undefined for a fresh install
-   */
-  static async migrateInstallState(): Promise<string | undefined> {
-    // Fresh install
-    if (!ComfyServerConfig.exists()) return undefined;
-
-    // Upgrade
-    const basePath = await ComfyDesktopApp.loadBasePath();
-
-    // Migrate config
-    const config = useDesktopConfig();
-    const upgraded = 'upgraded';
-    config.set('installState', upgraded);
-    config.set('basePath', basePath);
-    return upgraded;
-  }
-
-  /**
-   * Loads the base_path value from the YAML config.
-   *
-   * Quits in the event of failure.
-   * @returns The base path of the ComfyUI data directory, if available
-   */
-  static async loadBasePath(): Promise<string | null> {
-    const basePath = await ComfyServerConfig.readBasePathFromConfig(ComfyServerConfig.configPath);
-    switch (basePath.status) {
-      case 'success':
-        return basePath.path;
-      case 'invalid':
-        // TODO: File was there, and was valid YAML.  It just didn't have a valid base_path.
-        // Show path edit screen instead of reinstall.
-        return null;
-      case 'notFound':
-        return null;
-      default:
-        // 'error': Explain and quit
-        // TODO: Support link?  Something?
-        await new InstallationValidator().showInvalidFileAndQuit(ComfyServerConfig.configPath, {
-          message: `Unable to read the YAML configuration file.  Please ensure this file is available and can be read:
-
-${ComfyServerConfig.configPath}
-
-If this problem persists, back up and delete the config file, then restart the app.`,
-          buttons: ['Open ComfyUI &directory and quit', '&Quit'],
-          defaultId: 0,
-          cancelId: 1,
-        });
-        throw new Error('Unreachable');
-    }
   }
 
   uninstall(): void {
