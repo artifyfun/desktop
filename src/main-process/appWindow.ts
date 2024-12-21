@@ -151,6 +151,16 @@ export class AppWindow {
     }
   }
 
+  /** Opens a modal file/folder picker. @inheritdoc {@link Electron.Dialog.showOpenDialog} */
+  public async showOpenDialog(options: Electron.OpenDialogOptions) {
+    return await dialog.showOpenDialog(this.window, options);
+  }
+
+  /** Opens a modal message box. @inheritdoc {@link Electron.Dialog.showMessageBox} */
+  public async showMessageBox(options: Electron.MessageBoxOptions) {
+    return await dialog.showMessageBox(this.window, options);
+  }
+
   /**
    * Loads window state from `userData` via `electron-store`.  Overwrites invalid config with defaults.
    * @returns The electron store for non-critical window state (size/position etc)
