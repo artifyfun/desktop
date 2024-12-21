@@ -125,7 +125,7 @@ If this problem persists, back up and delete the config file, then restart the a
     }
 
     const installOptions = await new Promise<InstallOptions>((resolve) => {
-      ipcMain.on(IPC_CHANNELS.INSTALL_COMFYUI, (_event, installOptions: InstallOptions) => {
+      ipcMain.once(IPC_CHANNELS.INSTALL_COMFYUI, (_event, installOptions: InstallOptions) => {
         log.verbose('Received INSTALL_COMFYUI.');
         resolve(installOptions);
       });
