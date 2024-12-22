@@ -215,4 +215,16 @@ export class ComfyServerConfig {
       }
     }
   }
+
+  /** @deprecated Do not use.  Tempoary workaround for validation only. */
+  public static async setBasePathInDefaultConfig(basePath: string): Promise<boolean> {
+    const parsedConfig = await ComfyServerConfig.readConfigFile(ComfyServerConfig.configPath);
+    if (!parsedConfig) return false;
+
+    parsedConfig.comfyui_desktop ??= {};
+    parsedConfig.comfyui_desktop.base_path = basePath;
+    const stringified = ComfyServerConfig.generateConfigFileContent(parsedConfig);
+
+    return await ComfyServerConfig.writeConfigFile(ComfyServerConfig.configPath, stringified);
+  }
 }
