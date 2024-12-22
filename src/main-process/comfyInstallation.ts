@@ -1,15 +1,10 @@
 import { ComfyServerConfig } from '../config/comfyServerConfig';
-import { InstallationValidator } from '../install/installationValidator';
 import { useDesktopConfig } from '../store/desktopConfig';
-import { pathAccessible, validateHardware } from '../utils';
+import { containsDirectory, pathAccessible } from '../utils';
 import type { DesktopSettings } from '../store/desktopSettings';
-import type { AppWindow } from './appWindow';
 import log from 'electron-log/main';
-import { ipcMain } from 'electron';
-import type { InstallOptions } from '../preload';
-import { IPC_CHANNELS } from '../constants';
-import { InstallWizard } from '../install/installWizard';
 
+// TODO: | 'uvMissing' | 'venvMissing' | 'venvInvalid' | 'noPyTorch';
 export type ValidationIssue = 'invalidBasePath';
 
 export interface ValidationResult {
@@ -17,24 +12,41 @@ export interface ValidationResult {
   readonly issues: ValidationIssue[];
 }
 
+type InstallState = Exclude<DesktopSettings['installState'], undefined>;
+
 /**
  * Object representing the desktop app installation itself.
  * Used to set app state and validate the environment.
- * @todo In progress: Move user interaction to dedicated handlers.
  */
 export class ComfyInstallation {
-  isValid: boolean = false;
-  state?: DesktopSettings['installState'];
-  basePath?: string;
+  /** Installation issues, such as missing base path, no venv.  Populated by {@link validate}. */
+  readonly issues: Set<ValidationIssue> = new Set();
 
-  constructor() {
+  /** Returns `true` if {@link state} is 'installed' and there are no issues, otherwise `false`. */
+  get isValid() {
+    return this.state === 'installed' && this.issues.size === 0;
+  }
+
+  constructor(
+    /** Installation state, e.g. `started`, `installed`.  See {@link DesktopSettings}. */
+    public state: InstallState,
+    /** The base path of the desktop app.  Models, nodes, and configuration are saved here by default. */
+    public basePath: string
+  ) {}
+
+  /**
+   * Static factory method. Creates a ComfyInstallation object if previously saved config can be read.
+   * @returns A ComfyInstallation (not validated) object if config is saved, otherwise `undefined`.
+   */
+  static fromConfig(): ComfyInstallation | undefined {
     const config = useDesktopConfig();
-    this.state = config.get('installState');
-    this.basePath = config.get('basePath') ?? undefined;
+    const state = config.get('installState');
+    const basePath = config.get('basePath');
+    if (state && basePath) return new ComfyInstallation(state, basePath);
   }
 
   /**
-   * Validate the installation and report any issues.
+   * Validate the installation and add any results to {@link issues}.
    * @returns The validated installation state, along with a list of any issues detected.
    */
   async validate(): Promise<ValidationResult> {
@@ -49,23 +61,16 @@ export class ComfyInstallation {
       result.state = 'upgraded';
     }
 
-    // Fresh install
-    if (!result.state) {
-      log.info('No installation detected.');
-      return result;
-    }
-
     // Validate base path
     const basePath = await this.loadBasePath();
     if (basePath === undefined || !(await pathAccessible(basePath))) {
-      log.warn('"base_path" is inaccessible or not in config.');
+      log.warn('"base_path" is inaccessible or undefined.');
+      this.issues.add('invalidBasePath');
       result.issues.push('invalidBasePath');
     }
 
     // TODO: Validate python, venv, etc.
-    // Set result.state
 
-    if (result.state === 'installed' && result.issues.length === 0) this.isValid = true;
     log.info(`Validation result: isValid:${this.isValid}, state:${result.state}, issues:${result.issues.length}`);
     return result;
   }
@@ -90,89 +95,48 @@ export class ComfyInstallation {
       default:
         // 'error': Explain and quit
         // TODO: Support link?  Something?
-        await new InstallationValidator().showInvalidFileAndQuit(ComfyServerConfig.configPath, {
-          message: `Unable to read the YAML configuration file.  Please ensure this file is available and can be read:
+        throw new Error(`Unable to read the YAML configuration file.  Please ensure this file is available and can be read:
 
 ${ComfyServerConfig.configPath}
 
-If this problem persists, back up and delete the config file, then restart the app.`,
-          buttons: ['Open ComfyUI &directory and quit', '&Quit'],
-          defaultId: 0,
-          cancelId: 1,
-        });
+If this problem persists, back up and delete the config file, then restart the app.`);
     }
   }
 
   /**
-   * Install ComfyUI and return the base path.
+   * Migrates the config file to the latest format, after an upgrade of the desktop app executables.
+   *
+   * Called during app startup, this function ensures that config is in the expected state.
    */
-  async startFreshInstall(appWindow: AppWindow): Promise<void> {
-    log.info('Starting installation.');
-
-    this.setState('started');
-    const config = useDesktopConfig();
-
-    const validation = await validateHardware();
-    if (typeof validation?.gpu === 'string') config.set('detectedGpu', validation.gpu);
-
-    if (!validation.isValid) {
-      log.verbose('Loading not-supported renderer.');
-      await appWindow.loadRenderer('not-supported');
-      log.error(validation.error);
-    } else {
-      log.verbose('Loading welcome renderer.');
-      await appWindow.loadRenderer('welcome');
+  upgradeConfig() {
+    // Migrate config
+    if (!this.issues.has('invalidBasePath')) {
+      useDesktopConfig().set('basePath', this.basePath);
     }
-
-    const installOptions = await new Promise<InstallOptions>((resolve) => {
-      ipcMain.once(IPC_CHANNELS.INSTALL_COMFYUI, (_event, installOptions: InstallOptions) => {
-        log.verbose('Received INSTALL_COMFYUI.');
-        resolve(installOptions);
-      });
-    });
-
-    const installWizard = new InstallWizard(installOptions);
-    useDesktopConfig().set('basePath', installWizard.basePath);
-
-    const { device } = installOptions;
-    if (device !== undefined) {
-      useDesktopConfig().set('selectedDevice', device);
-    }
-
-    await installWizard.install();
     this.setState('installed');
-    appWindow.maximize();
-    if (installWizard.shouldMigrateCustomNodes && installWizard.migrationSource) {
-      useDesktopConfig().set('migrateCustomNodesFrom', installWizard.migrationSource);
-    }
-    this.isValid = true;
-    this.basePath = installWizard.basePath;
   }
 
-  upgrade(validation: ValidationResult) {
-    if (!this.basePath || validation.issues.includes('invalidBasePath')) {
-      // TODO: Allow user to update base path
-    } else {
-      const config = useDesktopConfig();
-      // Migrate config
-      this.setState('installed');
-      this.isValid = true;
-      config.set('basePath', this.basePath);
-    }
+  /**
+   * Set a new base path in the YAML config file.
+   * @param newBasePath The new base path to use.
+   * @returns `true` if the new base path is valid and can be written to the config file, otherwise `false`
+   */
+  async updateBasePath(newBasePath: string): Promise<boolean> {
+    if (!newBasePath) return false;
+
+    // TODO: Allow creation of new venv
+    if (!(await containsDirectory(newBasePath, '.venv'))) return false;
+
+    this.basePath = newBasePath;
+    // TODO: SoC violation
+    return await ComfyServerConfig.setBasePathInDefaultConfig(newBasePath);
   }
 
-  resolveIssues(validation: ValidationResult) {
-    for (const issue of validation.issues) {
-      switch (issue) {
-        // TODO: Other issues (uv mising, venv etc)
-        case 'invalidBasePath':
-        // TODO: Allow user to update base path
-        // TODO: Add IPC listeners
-      }
-    }
-  }
-
-  setState(state: Exclude<DesktopSettings['installState'], undefined>) {
+  /**
+   * Changes the installation state and persists it to disk.
+   * @param state The new installation state to set.
+   */
+  setState(state: InstallState) {
     this.state = state;
     useDesktopConfig().set('installState', state);
   }
