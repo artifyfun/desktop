@@ -1,8 +1,6 @@
-import { app, dialog, ipcMain, shell } from 'electron';
-import fs from 'node:fs/promises';
+import { app, ipcMain } from 'electron';
 import log from 'electron-log/main';
-import path from 'node:path';
-import { ComfyInstallation, ValidationResult } from '../main-process/comfyInstallation';
+import { ComfyInstallation } from '../main-process/comfyInstallation';
 import type { AppWindow } from '../main-process/appWindow';
 import { useDesktopConfig } from '../store/desktopConfig';
 import type { InstallOptions } from '../preload';
@@ -37,14 +35,14 @@ export class InstallationValidator {
     // Fresh install
     if (!installation) return undefined;
 
-    const validation = await installation.validate();
+    const state = await installation.validate();
     // TODO: Resume install at point of interruption
-    if (validation.state === 'started') return installation;
-    if (validation.state === 'upgraded') installation.upgradeConfig();
+    if (state === 'started') return installation;
+    if (state === 'upgraded') installation.upgradeConfig();
 
     // Fix any issues before attempting app start
-    if (validation.issues.length > 0) {
-      await this.resolveIssues(installation, validation);
+    if (installation.issues.size > 0) {
+      await this.resolveIssues(installation);
       await installation.validate();
     }
 
@@ -127,11 +125,10 @@ export class InstallationValidator {
   /**
    * Resolves any issues found during installation validation.
    * @param installation The installation to resolve issues for
-   * @param validation The validation result ({@link ComfyInstallation.validate}) containing any issues to resolve
    * @throws If the base path is invalid or cannot be saved
    */
-  async resolveIssues(installation: ComfyInstallation, validation: ValidationResult) {
-    const issues = [...validation.issues];
+  async resolveIssues(installation: ComfyInstallation) {
+    const issues = [...installation.issues];
     for (const issue of issues) {
       switch (issue) {
         // TODO: Other issues (uv mising, venv etc)
@@ -150,6 +147,5 @@ export class InstallationValidator {
         }
       }
     }
-    validation.issues.length = 0;
   }
 }

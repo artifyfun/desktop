@@ -7,11 +7,6 @@ import log from 'electron-log/main';
 // TODO: | 'uvMissing' | 'venvMissing' | 'venvInvalid' | 'noPyTorch';
 export type ValidationIssue = 'invalidBasePath';
 
-export interface ValidationResult {
-  state: DesktopSettings['installState'];
-  readonly issues: ValidationIssue[];
-}
-
 type InstallState = Exclude<DesktopSettings['installState'], undefined>;
 
 /**
@@ -49,16 +44,16 @@ export class ComfyInstallation {
    * Validate the installation and add any results to {@link issues}.
    * @returns The validated installation state, along with a list of any issues detected.
    */
-  async validate(): Promise<ValidationResult> {
+  async validate(): Promise<InstallState> {
     log.info(`Validating installation. Recorded state: [${this.state}]`);
 
-    const result: ValidationResult = { state: this.state, issues: [] };
+    let { state } = this;
 
     // Upgraded from a version prior to 0.3.18
     // TODO: Validate more than just the existence of one file
-    if (!result.state && ComfyServerConfig.exists()) {
+    if (!state && ComfyServerConfig.exists()) {
       log.info('Found extra_models_config.yaml but no recorded state - assuming upgrade from <= 0.3.18');
-      result.state = 'upgraded';
+      state = 'upgraded';
     }
 
     // Validate base path
@@ -66,13 +61,12 @@ export class ComfyInstallation {
     if (basePath === undefined || !(await pathAccessible(basePath))) {
       log.warn('"base_path" is inaccessible or undefined.');
       this.issues.add('invalidBasePath');
-      result.issues.push('invalidBasePath');
     }
 
     // TODO: Validate python, venv, etc.
 
-    log.info(`Validation result: isValid:${this.isValid}, state:${result.state}, issues:${result.issues.length}`);
-    return result;
+    log.info(`Validation result: isValid:${this.isValid}, state:${state}, issues:${this.issues.size}`);
+    return state;
   }
 
   /**
