@@ -19,36 +19,37 @@ export class InstallationValidator {
    * @returns A valid {@link ComfyInstallation} object.
    */
   async ensureInstalled(): Promise<ComfyInstallation> {
-    const installation = await this.getInstallation();
-
-    if (!installation || installation.state === 'started') return await this.freshInstall();
-    return installation;
-  }
-
-  /**
-   * Gets the current installation state, confirming any details saved in config.
-   * @returns A valid {@link ComfyInstallation} object if the installation passes validation, otherwise `undefined`.
-   */
-  async getInstallation(): Promise<ComfyInstallation | undefined> {
     const installation = ComfyInstallation.fromConfig();
 
     // Fresh install
-    if (!installation) return undefined;
+    if (!installation) return await this.freshInstall();
 
+    // Validate installation
     const state = await installation.validate();
-    // TODO: Resume install at point of interruption
-    if (state === 'started') return installation;
-    if (state === 'upgraded') installation.upgradeConfig();
+    if (state !== 'installed') await this.resumeInstallation(installation);
 
-    // Fix any issues before attempting app start
+    // Resolve issues and re-run validation
     if (installation.issues.size > 0) {
       await this.resolveIssues(installation);
       await installation.validate();
     }
 
-    // TODO: Confirm this is no longer possible after resolveIssues, and remove.
+    // TODO: Confirm this is no longer possible after resolveIssues and remove.
     if (!installation.basePath) throw new Error('Base path was invalid after installation validation.');
+    if (installation.issues.size > 0) throw new Error('Installation issues remain after validation.');
+
+    // Return validated installation
     return installation;
+  }
+
+  /**
+   * Resumes an installation that was never completed.
+   * @param installation The installation to resume
+   */
+  async resumeInstallation(installation: ComfyInstallation) {
+    // TODO: Resume install at point of interruption
+    if (installation.state === 'started') await this.freshInstall();
+    if (installation.state === 'upgraded') installation.upgradeConfig();
   }
 
   /**
