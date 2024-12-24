@@ -72,6 +72,7 @@ export class ComfyInstallation {
   /**
    * Loads the base path from YAML config. If it is unreadable, warns the user and quits.
    * @returns The base path if read successfully, or `undefined`
+   * @throws If the config file is unreadable
    */
   async loadBasePath(): Promise<string | undefined> {
     const readResult = await ComfyServerConfig.readBasePathFromConfig(ComfyServerConfig.configPath);

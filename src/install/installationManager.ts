@@ -8,7 +8,7 @@ import { IPC_CHANNELS } from '../constants';
 import { InstallWizard } from './installWizard';
 import { validateHardware } from '../utils';
 
-/** High-level / UI handling of installation validation. */
+/** High-level / UI control over the installation of ComfyUI server. */
 export class InstallationManager {
   constructor(public readonly appWindow: AppWindow) {}
 
