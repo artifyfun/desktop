@@ -9,7 +9,7 @@ import { InstallWizard } from './installWizard';
 import { validateHardware } from '../utils';
 
 /** High-level / UI handling of installation validation. */
-export class InstallationValidator {
+export class InstallationManager {
   constructor(public readonly appWindow: AppWindow) {}
 
   /**
