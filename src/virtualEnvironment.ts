@@ -15,6 +15,9 @@ export type ProcessCallbacks = {
 
 /**
  * Manages a virtual Python environment using uv.
+ *
+ * Maintains its own node-pty instance; output from this is piped to the virtual terminal.
+ * @todo Split either installation or terminal management to a separate class.
  */
 export class VirtualEnvironment {
   readonly venvRootPath: string;
@@ -29,6 +32,7 @@ export class VirtualEnvironment {
   readonly selectedDevice?: string;
   uvPty: pty.IPty | undefined;
 
+  /** @todo Refactor to `using` */
   get uvPtyInstance() {
     if (!this.uvPty) {
       const shell = getDefaultShell();
@@ -239,12 +243,11 @@ export class VirtualEnvironment {
       const endMarker = `_-end-${id}:`;
       const input = `clear${EOL}${command}${EOL}echo "${endMarker}$?"`;
       const dataReader = this.uvPtyInstance.onData((data) => {
-        const lines = data.split(/(\r\n|\n)/);
+        // Remove ansi sequences to see if this the exit marker
+        const lines = data.replaceAll(/\u001B\[[\d;?]*[A-Za-z]/g, '').split(/(\r\n|\n)/);
         for (const line of lines) {
-          // Remove ansi sequences to see if this the exit marker
-          const clean = line.replaceAll(/\u001B\[[\d;?]*[A-Za-z]/g, '');
-          if (clean.startsWith(endMarker)) {
-            const exit = clean.substring(endMarker.length).trim();
+          if (line.startsWith(endMarker)) {
+            const exit = line.substring(endMarker.length).trim();
             let exitCode: number;
             // Powershell outputs True / False for success
             if (exit === 'True') {
@@ -260,9 +263,7 @@ export class VirtualEnvironment {
               }
             }
             dataReader.dispose();
-            res({
-              exitCode,
-            });
+            res({ exitCode });
             break;
           }
         }
@@ -277,11 +278,11 @@ export class VirtualEnvironment {
     args: string[],
     env: Record<string, string>,
     callbacks?: ProcessCallbacks,
-    cwd?: string
+    cwd: string = this.venvRootPath
   ): ChildProcess {
-    log.info(`Running command: ${command} ${args.join(' ')} in ${this.venvRootPath}`);
+    log.info(`Running command: ${command} ${args.join(' ')} in ${cwd}`);
     const childProcess: ChildProcess = spawn(command, args, {
-      cwd: cwd ?? this.venvRootPath,
+      cwd,
       env: {
         ...process.env,
         ...env,
