@@ -15,6 +15,7 @@ import { InstallationManager } from './install/installationManager';
 dotenv.config();
 log.initialize();
 log.transports.file.level = (process.env.LOG_LEVEL as LevelOption) ?? 'info';
+log.info(`Starting app v${app.getVersion()}`);
 
 // Register the quit handlers regardless of single instance lock and before squirrel startup events.
 // Quit when all windows are closed, except on macOS. There, it's common
@@ -35,6 +36,7 @@ app.on('before-quit', () => {
 });
 
 // Sentry needs to be initialized at the top level.
+log.verbose('Initializing Sentry');
 SentryLogging.init();
 
 // Synchronous app start
