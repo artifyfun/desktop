@@ -7,6 +7,7 @@ import pty from 'node-pty';
 import os, { EOL } from 'node:os';
 import { getDefaultShell } from './shell/util';
 import type { TorchDeviceType } from './preload';
+import { rm } from 'node:fs/promises';
 
 export type ProcessCallbacks = {
   onStdout?: (data: string) => void;
@@ -113,7 +114,10 @@ export class VirtualEnvironment {
       await this.createEnvironment(callbacks);
     } finally {
       const pid = this.uvPty?.pid;
-      if (pid) process.kill(pid);
+      if (pid) {
+        process.kill(pid);
+        this.uvPty = undefined;
+      }
     }
   }
 
@@ -145,17 +149,11 @@ export class VirtualEnvironment {
       log.info(`Creating virtual environment at ${this.venvPath} with python ${this.pythonVersion}`);
 
       // Create virtual environment using uv
-      const args = ['venv', '--python', this.pythonVersion];
-      const { exitCode } = await this.runUvCommandAsync(args, callbacks);
+      const venvCreated = await this.createVenv(callbacks?.onStdout);
+      if (!venvCreated) return;
 
-      if (exitCode !== 0) {
-        throw new Error(`Failed to create virtual environment: exit code ${exitCode}`);
-      }
-
-      const { exitCode: ensurepipExitCode } = await this.runPythonCommandAsync(['-m', 'ensurepip', '--upgrade']);
-      if (ensurepipExitCode !== 0) {
-        throw new Error(`Failed to upgrade pip: exit code ${ensurepipExitCode}`);
-      }
+      const pipEnsured = await this.upgradePip(callbacks);
+      if (!pipEnsured) return;
 
       log.info(`Successfully created virtual environment at ${this.venvPath}`);
     } catch (error) {
@@ -231,7 +229,7 @@ export class VirtualEnvironment {
    * @param args
    * @returns
    */
-  public async runUvCommandAsync(args: string[], callbacks?: ProcessCallbacks): Promise<{ exitCode: number | null }> {
+  private async runUvCommandAsync(args: string[], callbacks?: ProcessCallbacks): Promise<{ exitCode: number | null }> {
     const uvCommand = os.platform() === 'win32' ? `& "${this.uvPath}"` : this.uvPath;
     log.info(`Running uv command: ${uvCommand} ${args.join(' ')}`);
     return this.runPtyCommandAsync(`${uvCommand} ${args.map((a) => `"${a}"`).join(' ')}`, callbacks?.onStdout);
@@ -241,7 +239,7 @@ export class VirtualEnvironment {
     const id = Date.now();
     return new Promise((res) => {
       const endMarker = `_-end-${id}:`;
-      const input = `clear${EOL}${command}${EOL}echo "${endMarker}$?"`;
+      const input = `${command}\recho "${endMarker}$?"`;
       const dataReader = this.uvPtyInstance.onData((data) => {
         // Remove ansi sequences to see if this the exit marker
         const lines = data.replaceAll(/\u001B\[[\d;?]*[A-Za-z]/g, '').split(/(\r\n|\n)/);
@@ -269,7 +267,7 @@ export class VirtualEnvironment {
         }
         onData?.(data);
       });
-      this.uvPtyInstance.write(`${input}${EOL}`);
+      this.uvPtyInstance.write(`${input}\r`);
     });
   }
 
@@ -332,44 +330,44 @@ export class VirtualEnvironment {
 
   private async installPytorch(callbacks?: ProcessCallbacks): Promise<void> {
     const { selectedDevice } = this;
+    const packages = ['torch', 'torchvision', 'torchaudio'];
 
     if (selectedDevice === 'cpu') {
       // CPU mode
       log.info('Installing PyTorch CPU');
-      await this.runUvCommandAsync(['pip', 'install', 'torch', 'torchvision', 'torchaudio'], callbacks);
+      const { exitCode } = await this.runUvCommandAsync(['pip', 'install', ...packages], callbacks);
+      if (exitCode !== 0) {
+        throw new Error(`Failed to install PyTorch CPU: exit code ${exitCode}`);
+      }
     } else if (selectedDevice === 'nvidia' || process.platform === 'win32') {
       // Win32 default
       log.info('Installing PyTorch CUDA 12.1');
-      await this.runUvCommandAsync(
-        [
-          'pip',
-          'install',
-          'torch',
-          'torchvision',
-          'torchaudio',
-          '--index-url',
-          'https://download.pytorch.org/whl/cu121',
-        ],
+      const { exitCode } = await this.runUvCommandAsync(
+        ['pip', 'install', ...packages, '--index-url', 'https://download.pytorch.org/whl/cu121'],
         callbacks
       );
+      if (exitCode !== 0) {
+        throw new Error(`Failed to install PyTorch CUDA 12.1: exit code ${exitCode}`);
+      }
     } else if (selectedDevice === 'mps' || process.platform === 'darwin') {
       // macOS default
       log.info('Installing PyTorch Nightly for macOS.');
-      await this.runUvCommandAsync(
+      const { exitCode } = await this.runUvCommandAsync(
         [
           'pip',
           'install',
           '-U',
           '--prerelease',
           'allow',
-          'torch',
-          'torchvision',
-          'torchaudio',
+          ...packages,
           '--extra-index-url',
           'https://download.pytorch.org/whl/nightly/cpu',
         ],
         callbacks
       );
+      if (exitCode !== 0) {
+        throw new Error(`Failed to install PyTorch Nightly: exit code ${exitCode}`);
+      }
     }
   }
 
@@ -391,7 +389,129 @@ export class VirtualEnvironment {
     }
   }
 
-  private async exists(): Promise<boolean> {
+  async exists(): Promise<boolean> {
     return await pathAccessible(this.venvPath);
+  }
+
+  /**
+   * Checks if the virtual environment has all the required packages of ComfyUI core.
+   *
+   * Parses the text output of `uv pip install --dry-run -r requirements.txt`.
+   * @returns `true` if pip install does not detect any missing packages, otherwise `false`
+   */
+  async hasRequirements() {
+    const args = ['pip', 'install', '--dry-run', '-r', this.comfyUIRequirementsPath];
+    log.info(`Running direct process command: ${args.join(' ')}`);
+
+    // Get packages as json string
+    let output = '';
+    const callbacks: ProcessCallbacks = {
+      onStdout: (data) => (output += data.toString()),
+      onStderr: (data) => (output += data.toString()),
+    };
+    const result = await this.runCommandAsync(this.uvPath, args, { PYTHONIOENCODING: 'utf8' }, callbacks);
+
+    if (result.exitCode !== 0) throw new Error(`Failed to get packages: Exit code ${result.exitCode}`);
+    if (!output) throw new Error('Failed to get packages: uv output was empty');
+
+    const venvOk = output.search(/\bWould make no changes\s+$/) !== -1;
+    if (!venvOk) log.warn(output);
+
+    return venvOk;
+  }
+
+  async clearUvCache(): Promise<boolean> {
+    return await this.#rmdir(this.cacheDir, 'uv cache');
+  }
+
+  async removeVenvDirectory(): Promise<boolean> {
+    return await this.#rmdir(this.venvPath, '.venv directory');
+  }
+
+  async #rmdir(dir: string, logName: string): Promise<boolean> {
+    if (await pathAccessible(dir)) {
+      log.info(`Removing ${logName} [${dir}]`);
+      try {
+        await rm(dir, { recursive: true });
+      } catch (error) {
+        log.error(`Error removing ${logName}: ${error}`);
+        return false;
+      }
+    } else {
+      log.warn(`Attempted to remove ${logName}, but directory does not exist [${dir}]`);
+    }
+    return true;
+  }
+
+  /**
+   * Reinstalls the required packages for ComfyUI core.
+   */
+  async reinstallRequirements(onData: (data: string) => void) {
+    const callbacks = { onStdout: onData };
+
+    try {
+      await this.#using(() => this.manualInstall(callbacks));
+    } catch (error) {
+      log.error(`Failed to reinstall requirements: ${error}`);
+
+      const created = await this.createVenv(onData);
+      if (!created) return false;
+
+      const pipEnsured = await this.upgradePip(callbacks);
+      if (!pipEnsured) return false;
+
+      await this.#using(() => this.manualInstall(callbacks));
+    }
+    return true;
+  }
+
+  /**
+   * Upgrades pip in the virtual environment.
+   * @returns `true` if the virtual environment was created successfully, otherwise `false`
+   */
+  async upgradePip(callbacks?: ProcessCallbacks): Promise<boolean> {
+    log.info('Running ensurepip --upgrade...');
+    const args = ['-m', 'ensurepip', '--upgrade'];
+
+    const { exitCode } = await this.runPythonCommandAsync(args, callbacks);
+    if (exitCode !== 0) {
+      log.error(`Failed to upgrade pip: exit code ${exitCode}`);
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Create virtual environment using uv
+   * @returns `true` if the virtual environment was created successfully, otherwise `false`
+   */
+  async createVenv(onData: ((data: string) => void) | undefined): Promise<boolean> {
+    const callbacks: ProcessCallbacks = { onStdout: onData };
+    const args = ['venv', '--python', this.pythonVersion];
+
+    const { exitCode } = await this.#using(() => this.runUvCommandAsync(args, callbacks));
+    if (exitCode !== 0) {
+      log.error(`Failed to create virtual environment: exit code ${exitCode}`);
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Similar to `using` functionality, this ensures that {@link uvPty} is terminated after the command has run.
+   * @param command The command to run
+   * @returns The result of the command
+   * @todo Refactor to `using`
+   */
+  async #using<T>(command: () => Promise<T>): Promise<T> {
+    try {
+      return await command();
+    } finally {
+      const pid = this.uvPty?.pid;
+      if (pid) {
+        process.kill(pid);
+        this.uvPty = undefined;
+      }
+    }
   }
 }

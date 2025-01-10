@@ -87,7 +87,7 @@ async function startApp() {
 
     // Register basic handlers that are necessary during app's installation.
     new PathHandlers().registerHandlers();
-    new AppInfoHandlers().registerHandlers();
+    new AppInfoHandlers().registerHandlers(appWindow);
     ipcMain.handle(IPC_CHANNELS.OPEN_DIALOG, (event, options: Electron.OpenDialogOptions) => {
       log.debug('Open dialog');
       return dialog.showOpenDialogSync({
@@ -99,11 +99,9 @@ async function startApp() {
       // Install / validate installation is complete
       const installManager = new InstallationManager(appWindow);
       const installation = await installManager.ensureInstalled();
-      if (!installation.isValid)
-        throw new Error(`Fatal: Could not validate installation: [${installation.state}/${installation.issues.size}]`);
 
       // Initialize app
-      const comfyDesktopApp = ComfyDesktopApp.create(appWindow, installation.basePath);
+      const comfyDesktopApp = new ComfyDesktopApp(installation, appWindow);
       await comfyDesktopApp.initialize();
       SentryLogging.comfyDesktopApp = comfyDesktopApp;
 

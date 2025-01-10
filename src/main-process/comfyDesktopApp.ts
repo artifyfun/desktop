@@ -17,16 +17,23 @@ import { Terminal } from '../shell/terminal';
 import { DesktopConfig, useDesktopConfig } from '../store/desktopConfig';
 import { CmCli } from '../services/cmCli';
 import { rm } from 'node:fs/promises';
+import type { ComfyInstallation } from './comfyInstallation';
 
 export class ComfyDesktopApp {
   public comfyServer: ComfyServer | null = null;
+  public comfySettings: ComfySettings;
   private terminal: Terminal | null = null; // Only created after server starts.
 
   constructor(
-    public basePath: string,
-    public comfySettings: ComfySettings,
+    public installation: ComfyInstallation,
     public appWindow: AppWindow
-  ) {}
+  ) {
+    this.comfySettings = new ComfySettings(installation.basePath);
+  }
+
+  get basePath() {
+    return this.installation.basePath;
+  }
 
   get pythonInstallPath() {
     return app.isPackaged ? this.basePath : path.join(app.getAppPath(), 'assets');
@@ -111,10 +118,6 @@ export class ComfyDesktopApp {
       }
     );
 
-    // eslint-disable-next-line @typescript-eslint/require-await
-    ipcMain.handle(IPC_CHANNELS.GET_BASE_PATH, async (): Promise<string> => {
-      return this.basePath;
-    });
     ipcMain.handle(IPC_CHANNELS.IS_FIRST_TIME_SETUP, () => {
       return !ComfyServerConfig.exists();
     });
@@ -173,10 +176,6 @@ export class ComfyDesktopApp {
 
     this.appWindow.sendServerStartProgress(ProgressStatus.PYTHON_SETUP);
 
-    const config = useDesktopConfig();
-    const selectedDevice = config.get('selectedDevice');
-    const virtualEnvironment = new VirtualEnvironment(this.basePath, selectedDevice);
-
     const processCallbacks: ProcessCallbacks = {
       onStdout: (data) => {
         log.info(data.replaceAll(ansiCodes, ''));
@@ -188,8 +187,10 @@ export class ComfyDesktopApp {
       },
     };
 
+    const { virtualEnvironment } = this.installation;
     await virtualEnvironment.create(processCallbacks);
 
+    const config = useDesktopConfig();
     const customNodeMigrationError = await this.migrateCustomNodes(config, virtualEnvironment, processCallbacks);
 
     this.appWindow.sendServerStartProgress(ProgressStatus.STARTING_SERVER);
@@ -223,10 +224,6 @@ export class ComfyDesktopApp {
       // Always remove the flag so the user doesnt get stuck here
       config.delete('migrateCustomNodesFrom');
     }
-  }
-
-  static create(appWindow: AppWindow, basePath: string): ComfyDesktopApp {
-    return new ComfyDesktopApp(basePath, new ComfySettings(basePath), appWindow);
   }
 
   async uninstall(): Promise<void> {
