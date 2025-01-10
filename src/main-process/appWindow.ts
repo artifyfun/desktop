@@ -308,6 +308,7 @@ export class AppWindow {
     const tray = new Tray(trayImage);
 
     tray.setToolTip('ComfyUI');
+    tray.on('double-click', () => this.show());
 
     // For Mac you can have a separate icon when you press.
     // The current design language for Mac Eco System is White or Black icon then when you click it is in color
