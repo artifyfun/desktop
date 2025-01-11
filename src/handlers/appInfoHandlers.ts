@@ -44,6 +44,7 @@ export class AppInfoHandlers {
       IPC_CHANNELS.SET_WINDOW_STYLE,
       async (_event: Electron.IpcMainInvokeEvent, style: DesktopSettings['windowStyle']): Promise<void> => {
         await useDesktopConfig().setAsync('windowStyle', style);
+        await appWindow.recreateWindow();
       }
     );
     ipcMain.handle(IPC_CHANNELS.GET_WINDOW_STYLE, async (): Promise<DesktopSettings['windowStyle']> => {
