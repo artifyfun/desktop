@@ -20,6 +20,7 @@ import { getAppResourcesPath } from '../install/resourcePaths';
 import type { ElectronContextMenuOptions } from '../preload';
 import { AppWindowSettings } from '../store/AppWindowSettings';
 import { useDesktopConfig } from '../store/desktopConfig';
+import type { DesktopSettings } from '../store/desktopSettings';
 
 /**
  * Creates a single application window that displays the renderer and encapsulates all the logic for sending messages to the renderer.
@@ -112,12 +113,39 @@ export class AppWindow {
     return window;
   }
 
-  async recreateWindow() {
+  /**
+   * Recreates the application window by closing the current window and creating a new one.
+   *
+   * After the new window is created, it reloads the last ComfyUI URL.
+   * @returns A promise that resolves after the recreated window has loaded the last ComfyUI URL
+   */
+  async recreateWindow(): Promise<void> {
     const { window } = this;
 
     this.window = this.#createWindow();
     window.close();
     await this.reloadLastComfyUIUrl();
+  }
+
+  /**
+   * Changes the custom window style for win32 / linux.  Recreates the window if the style is changed.
+   * @param style The new window style to be applied
+   * @returns A promise that resolves when the window style has been set and the window has been recreated.
+   * Ignores attempts to unset the style or set it to the current value.
+   */
+  async setWindowStyle(style: DesktopSettings['windowStyle']): Promise<void> {
+    log.info(`Setting window style:`, style);
+    if (!style) return;
+
+    const store = useDesktopConfig();
+    const current = store.get('windowStyle');
+    if (style === current) {
+      log.warn(`Ignoring attempt to set window style to current value [${current}]`);
+      // return;
+    }
+
+    store.set('windowStyle', style);
+    await this.recreateWindow();
   }
 
   public isReady(): boolean {
