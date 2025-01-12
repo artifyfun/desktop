@@ -178,6 +178,7 @@ export class AppWindow {
     if (devUrlOverride) {
       const url = `${devUrlOverride}/${urlPath}`;
       log.info(`Loading development server ${url}`);
+      this.rendererReady = true; // TODO: Look into why dev server ready event is not being sent to main process.
       await this.window.loadURL(url);
       this.window.webContents.openDevTools();
     } else {
