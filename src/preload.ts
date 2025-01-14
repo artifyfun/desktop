@@ -364,14 +364,6 @@ const electronAPI = {
       await ipcRenderer.invoke(IPC_CHANNELS.VALIDATE_INSTALLATION);
     },
 
-    // /**
-    //  * Cancels any running validation tasks.
-    //  */
-    // cancel: async () => {
-    //   console.debug('Cancelling install validation.');
-    //   await ipcRenderer.invoke(IPC_CHANNELS.CANCEL_VALIDATION);
-    // },
-
     /** Removes the validation update listener. Simpler than verifying determinism of UPDATE and COMPLETE. */
     dispose: () => {
       ipcRenderer.removeAllListeners(IPC_CHANNELS.VALIDATION_UPDATE);
