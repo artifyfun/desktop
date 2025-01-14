@@ -20,7 +20,7 @@ export class AppInfoHandlers {
     });
 
     // eslint-disable-next-line @typescript-eslint/require-await
-    ipcMain.handle(IPC_CHANNELS.GET_BASE_PATH, async (): Promise<string | null | undefined> => {
+    ipcMain.handle(IPC_CHANNELS.GET_BASE_PATH, (): string | null | undefined => {
       return useDesktopConfig().get('basePath');
     });
 
