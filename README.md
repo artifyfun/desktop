@@ -179,6 +179,12 @@ deactivate # Deactivate your existing python env to avoid influencing the
 yarn start
 ```
 
+**Important**: The `start` command does not build or watch the preload package. If you make changes to [`preload.ts`](src/preload.ts), you need to manually transpile it by running:
+
+```bash
+yarn vite:compile
+```
+
 You can also build the package and/or distributables using the `make` command:
 
 ```bash
@@ -189,6 +195,8 @@ yarn make --windows
 ```
 
 ### Troubleshooting
+
+#### Node-pty
 
 If you get an error similar to:
 
@@ -205,11 +213,26 @@ npx electron-rebuild
 or if that fails
 
 ```
-yarn add -D @electron/rebuild
-rm -rf node_modules
-rm yarn.lock
-yarn install
-npx electron-rebuild
+yarn add -D @electron/rebuild && rm -r node_modules yarn.lock && yarn install && npx electron-rebuild
+```
+
+#### Chrome Sandbox on Linux
+
+On **Linux**, Electron's chrome-sandbox binary may require root ownership and the SUID bit (4755 permissions) for sandboxing to work. Apply the following commands:
+
+```bash
+sudo chown root:root "$(pwd)/node_modules/electron/dist/chrome-sandbox"
+sudo chmod 4755 "$(pwd)/node_modules/electron/dist/chrome-sandbox"
+```
+
+This will need to be reapplied every time you run `yarn install` or `yarn add`, as the permissions will be reset. You can add a `postinstall` script to `package.json` to automate this:
+
+```json
+{
+  "scripts": {
+    "postinstall": "sudo chown root:root node_modules/electron/dist/chrome-sandbox && sudo chmod 4755 node_modules/electron/dist/chrome-sandbox"
+  }
+}
 ```
 
 #### Missing libraries
