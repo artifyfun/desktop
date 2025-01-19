@@ -49,8 +49,7 @@ export class AppWindow {
   }
 
   public constructor() {
-    const store = this.loadWindowStore();
-    this.store = store;
+    this.store = this.loadWindowStore();
 
     this.window = this.#createWindow();
 
