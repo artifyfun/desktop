@@ -12,10 +12,16 @@ import { InstallWizard } from './installWizard';
 
 /** High-level / UI control over the installation of ComfyUI server. */
 export class InstallationManager {
+  private _isFreshInstall = false;
+
   constructor(
     public readonly appWindow: AppWindow,
     private readonly telemetry: ITelemetry
   ) {}
+
+  get isFreshInstall(): boolean {
+    return this._isFreshInstall;
+  }
 
   /**
    * Ensures that ComfyUI is installed and ready to run.
@@ -29,7 +35,10 @@ export class InstallationManager {
     log.info(`Install state: ${installation?.state ?? 'not installed'}`);
 
     // Fresh install
-    if (!installation) return await this.freshInstall();
+    if (!installation) {
+      this._isFreshInstall = true;
+      return await this.freshInstall();
+    }
 
     try {
       // Send updates to renderer

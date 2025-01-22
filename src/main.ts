@@ -3,7 +3,6 @@ import { app, dialog, ipcMain, shell } from 'electron';
 import { LevelOption } from 'electron-log';
 import log from 'electron-log/main';
 
-import { ComfyServerConfig } from './config/comfyServerConfig';
 import { DEFAULT_SERVER_ARGS, IPC_CHANNELS, ProgressStatus } from './constants';
 import { registerAppHandlers } from './handlers/AppHandlers';
 import { registerAppInfoHandlers } from './handlers/appInfoHandlers';
@@ -106,8 +105,6 @@ async function startApp() {
     });
 
     try {
-      const isNewUser = !ComfyServerConfig.exists();
-
       // Install / validate installation is complete
       const installManager = new InstallationManager(appWindow, telemetry);
       const installation = await installManager.ensureInstalled();
@@ -122,7 +119,7 @@ async function startApp() {
       telemetry.hasConsent = allowMetrics;
       if (allowMetrics) telemetry.flush();
 
-      if (isNewUser) {
+      if (installManager.isFreshInstall) {
         comfyDesktopApp.comfySettings.set('Comfy.TutorialCompleted', false);
         await comfyDesktopApp.comfySettings.saveSettings();
       }
