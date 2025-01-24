@@ -23,7 +23,7 @@ jobs:
           corepack: false
           registry-url: 'https://registry.npmjs.org'
       - name: Install dependencies
-        run: npm install --immutable
+        run: npm install
       - name: Build types
         run: npm run vite:types
       - name: Publish package

@@ -20,7 +20,7 @@ jobs:
           corepack: false
 
       - name: Install Dependencies
-        run: npm install --immutable
+        run: npm install
 
       - name: Run type check
         run: npx tsc --noEmit --strict

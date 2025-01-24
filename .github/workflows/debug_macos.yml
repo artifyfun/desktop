@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: '22.x'
           corepack: false
-      - run: npm install --immutable
+      - run: npm install
       - name: Build Comfy
         uses: ./.github/actions/build/macos/comfy
         env:
