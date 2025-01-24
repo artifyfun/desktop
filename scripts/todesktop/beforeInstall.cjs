@@ -10,7 +10,7 @@ module.exports = async ({ pkgJsonPath, pkgJson, appDir, hookName }) => {
    * hookName - string - the name of the hook ("todesktop:beforeInstall" or "todesktop:afterPack")
    */
 
-  console.log('Before Yarn Install', os.platform());
+  console.log('Before npm Install', os.platform());
 
   if (os.platform() === 'win32') {
     // ToDesktop currently does not have the min 3.12 python installed.

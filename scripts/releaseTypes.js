@@ -11,16 +11,13 @@ try {
 
   // Run npm version patch and capture the output
   console.log('Bumping version...');
-  execSync('yarn version patch', { stdio: 'inherit' });
+  execSync('npm version patch', { stdio: 'inherit' });
 
   // Read the new version from package.json
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   const packageJson = JSON.parse(readFileSync('./package.json', 'utf8'));
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
   const newVersion = packageJson.version;
-
-  // Commit the version bump
-  execSync(`git commit -am "Bump version ${newVersion} (types)" --no-verify`, { stdio: 'inherit' });
 
   // Create the PR
   console.log('Creating PR...');

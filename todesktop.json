@@ -13,8 +13,6 @@
     "assets/requirements/**",
     "assets/uv/**",
     ".vite/**",
-    ".yarnrc.yml",
-    ".yarn/**",
     ".husky/**"
   ],
   "extraResources": [{ "from": "./assets" }],
@@ -23,8 +21,6 @@
     "!dist/**",
     "!src/**",
     "!scripts/**",
-    "!.yarn/**",
-    "!.yarnrc.yml",
     "!.husky/**"
   ],
   "mac": {
