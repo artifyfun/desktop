@@ -146,29 +146,13 @@ nvm install 20
 nvm use 20
 ```
 
-### Yarn
-
-This project uses `yarn` as its package manager. If you do not already have a `yarn` binary available on your PATH, run:
-
-```bash
-# corepack is a set of utilities included with all recent distributions of node
-corepack enable
-yarn set version 4.5.0 # Look at the packageManager key in package.json for the exact version.
-```
-
-This will install a usable `yarn` binary. Then, in the root directory of this repo (ie adjacent to the top-level package.json file), run:
-
-```bash
-yarn install
-```
-
 ## ComfyUI Assets
 
 Before you can start the electron application, you need to download the ComfyUI source code and other things that are usually bundled with the application.
 
 ### ComfyUI and other dependencies
 
-First, initialize the application resources by running `yarn make:assets`:
+First, initialize the application resources by running `npm run make:assets`:
 
 This command will install ComfyUI and ComfyUI-Manager under `assets/`. The exact versions of each package is defined in `package.json`.
 
@@ -176,16 +160,16 @@ You can then run `start` to build/launch the code and a live buildserver that wi
 
 ```bash
 deactivate # Deactivate your existing python env to avoid influencing the
-yarn start
+npm run start
 ```
 
 You can also build the package and/or distributables using the `make` command:
 
 ```bash
 # build the platform-dependent package and any distributables
-yarn make
+npm run make
 # build cross-platform, e.g. windows from linux
-yarn make --windows
+npm run make --windows
 ```
 
 ### Troubleshooting
@@ -205,10 +189,10 @@ npx electron-rebuild
 or if that fails
 
 ```
-yarn add -D @electron/rebuild
+npm install -D @electron/rebuild
 rm -rf node_modules
-rm yarn.lock
-yarn install
+rm package-lock.json
+npm install
 npx electron-rebuild
 ```
 
@@ -263,7 +247,7 @@ Follow the above steps for local development setup first.
 
 ```bash
 # Authentication will be required.
-yarn publish
+npm run publish
 ```
 
 ## Utility scripts
@@ -271,13 +255,13 @@ yarn publish
 A number of utility scripts are defined under the "scripts" field of package.json. For example, to clean up the build artifacts you can run:
 
 ```bash
-yarn clean
+npm run clean
 
-# Remove files created by yarn make:assets
-yarn clean:assets
+# Remove files created by `npm run make:assets`
+npm run clean:assets
 
 # clean:slate also removes node_modules
-yarn clean:slate
+npm run clean:slate
 ```
 
 ## Crash Reports & Metrics
