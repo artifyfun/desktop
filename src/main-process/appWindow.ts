@@ -197,8 +197,11 @@ export class AppWindow {
    *
    * In production, this is via the file:// protocol. Dev environments can utilise a dev server.
    * @param page The page to load; a valid entry in the frontend router.
+   * @param forceReload Whether to force a reload of the page even if it is the current page. Default: `false`
    */
-  public async loadPage(page: Page): Promise<void> {
+  public async loadPage(page: Page, { forceReload = false }: { forceReload?: boolean } = {}): Promise<void> {
+    if (!forceReload && this.isOnPage(page)) return;
+
     const { devUrlOverride } = this;
     if (devUrlOverride) {
       const url = `${devUrlOverride}/${page}`;
