@@ -43,4 +43,4 @@ jobs:
           verbose: true
 
       - name: Check Prettier Formatting
-        run: npx run format
+        run: npm run format
