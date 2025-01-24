@@ -22,6 +22,15 @@ export class ComfyInstallation {
     inProgress: false,
     installState: 'started',
   };
+  private _isFreshInstall: boolean = false;
+
+  get isFreshInstall() {
+    return this._isFreshInstall;
+  }
+
+  set isFreshInstall(value) {
+    this._isFreshInstall = value;
+  }
 
   get hasIssues() {
     return Object.values(this.validation).includes('error');

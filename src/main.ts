@@ -119,7 +119,7 @@ async function startApp() {
       telemetry.hasConsent = allowMetrics;
       if (allowMetrics) telemetry.flush();
 
-      if (installManager.isFreshInstall) {
+      if (installation.isFreshInstall) {
         comfyDesktopApp.comfySettings.set('Comfy.TutorialCompleted', false);
         await comfyDesktopApp.comfySettings.saveSettings();
       }
