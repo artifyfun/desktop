@@ -24,10 +24,8 @@ runs:
       uses: JP250552/setup-node@feature/corepack
       with:
         node-version: '20.x'
-        corepack: true
-    - run: yarn install --immutable
-      shell: bash
-    - run: yarn set version --yarn-path self
+        corepack: false
+    - run: npm install --immutable
       shell: bash
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -37,8 +35,8 @@ runs:
       shell: bash
       run: |
         set -x
-        yarn make:assets
-        yarn clean:assets:git
+        npm run make:assets
+        npm run clean:assets:git
     - name: Make app
       shell: bash
       env:
@@ -49,10 +47,10 @@ runs:
       run: |
         if [ "${{ inputs.STAGING }}" = "true" ]; then
           echo "🚧 Building STAGING version..."
-          yarn run publish:staging
+          npm run publish:staging
         else
           echo "🚀 Building PRODUCTION version..."
-          yarn run publish | tee build.log
+          npm run publish | tee build.log
           
           # Extract build ID from the log
           BUILD_URL=$(grep "Build complete!" build.log | head -n1 | cut -d' ' -f3)

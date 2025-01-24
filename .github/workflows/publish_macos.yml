@@ -25,8 +25,8 @@ jobs:
         uses: JP250552/setup-node@feature/corepack
         with:
           node-version: '22.x'
-          corepack: true
-      - run: yarn install
+          corepack: false
+      - run: npm install --immutable
       - name: Get package version
         id: package-version
         run: echo "::set-output name=version::$(node -p "require('./package.json').version")"
@@ -51,7 +51,7 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: yarn run publish -- --arch="arm64"
+        run: npm run publish -- --arch="arm64"
       - name: Check Notarization
         run: |
           spctl -a -vvv -t install "out/ComfyUI-darwin-arm64/ComfyUI.app"

@@ -18,8 +18,8 @@ jobs:
         uses: JP250552/setup-node@feature/corepack
         with:
           node-version: '22.x'
-          corepack: true
-      - run: yarn install
+          corepack: false
+      - run: npm install --immutable
       - name: Build Comfy
         uses: ./.github/actions/build/macos/comfy
         env:
@@ -29,7 +29,7 @@ jobs:
         env:
           PUBLISH: false
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: yarn run make
+        run: npm run make
       - name: Upload Build
         uses: actions/upload-artifact@v4
         with:
