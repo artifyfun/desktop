@@ -56,9 +56,9 @@ export class ComfyInstallation {
     return new VirtualEnvironment(basePath, {
       telemetry: this.telemetry,
       selectedDevice: this.device,
-      pythonMirror: this.comfySettings.get('Comfy-Desktop.PythonInstallMirror'),
-      pypiMirror: this.comfySettings.get('Comfy-Desktop.PypiInstallMirror'),
-      torchMirror: this.comfySettings.get('Comfy-Desktop.TorchInstallMirror'),
+      pythonMirror: this.comfySettings.get('Comfy-Desktop.UV.PythonInstallMirror'),
+      pypiMirror: this.comfySettings.get('Comfy-Desktop.UV.PypiInstallMirror'),
+      torchMirror: this.comfySettings.get('Comfy-Desktop.UV.TorchInstallMirror'),
     });
   }
 

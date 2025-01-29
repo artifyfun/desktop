@@ -83,9 +83,9 @@ describe('ComfySettings', () => {
         'Comfy-Desktop.AutoUpdate': false,
         'Comfy-Desktop.SendStatistics': false,
         'Comfy.Server.LaunchArgs': { test: 'value' },
-        'Comfy-Desktop.PythonInstallMirror': '',
-        'Comfy-Desktop.PypiInstallMirror': '',
-        'Comfy-Desktop.TorchInstallMirror': '',
+        'Comfy-Desktop.UV.PythonInstallMirror': '',
+        'Comfy-Desktop.UV.PypiInstallMirror': '',
+        'Comfy-Desktop.UV.TorchInstallMirror': '',
       };
 
       vi.mocked(fs.access).mockResolvedValue();
