@@ -87,7 +87,7 @@ export class ComfyServer implements HasTelemetry {
       Object.entries(args)
         .flatMap(([key, value]) => [`--${key}`, value])
         // Empty string values are ignored. e.g. { cpu: '' } => '--cpu'
-        .filter((value: string) => value !== '')
+        .filter((value) => value !== '')
     );
   }
 
