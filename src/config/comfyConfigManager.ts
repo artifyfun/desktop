@@ -2,6 +2,8 @@ import log from 'electron-log/main';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { useDesktopConfig } from '@/store/desktopConfig';
+
 export type DirectoryStructure = (string | DirectoryStructure)[];
 
 export class ComfyConfigManager {
@@ -52,11 +54,12 @@ export class ComfyConfigManager {
     return requiredSubdirs.every((subdir) => fs.existsSync(path.join(directory, subdir)));
   }
 
-  static createComfyDirectories(localComfyDirectory: string): void {
-    log.info(`Creating ComfyUI directories in ${localComfyDirectory}`);
+  static createComfyDirectories(): void {
+    const basePath = useDesktopConfig().get('basePath')!;
+    log.info(`Creating ComfyUI directories in ${basePath}`);
 
     try {
-      this.createNestedDirectories(localComfyDirectory, this.DEFAULT_DIRECTORIES);
+      this.createNestedDirectories(basePath, this.DEFAULT_DIRECTORIES);
     } catch (error) {
       log.error(`Failed to create ComfyUI directories: ${error}`);
     }

@@ -1,9 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { useDesktopConfig } from '@/store/desktopConfig';
+
 import { ComfyConfigManager } from '../config/comfyConfigManager';
 import { ComfyServerConfig, ModelPaths } from '../config/comfyServerConfig';
-import { DEFAULT_SETTINGS, comfySettings } from '../config/comfySettings';
+import { comfySettings } from '../config/comfySettings';
 import { InstallOptions } from '../preload';
 import { HasTelemetry, ITelemetry, trackEvent } from '../services/telemetry';
 
@@ -21,14 +23,10 @@ export class InstallWizard implements HasTelemetry {
     return this.installOptions.migrationSourcePath;
   }
 
-  get basePath(): string {
-    return this.installOptions.installPath;
-  }
-
   @trackEvent('install_flow:create_comfy_directories')
   public async install() {
     // Setup the ComfyUI folder structure.
-    ComfyConfigManager.createComfyDirectories(this.basePath);
+    ComfyConfigManager.createComfyDirectories();
     this.initializeUserFiles();
     this.initializeSettings();
     await this.initializeModelPaths();
@@ -44,7 +42,7 @@ export class InstallWizard implements HasTelemetry {
     this.telemetry.track('migrate_flow:migrate_user_files');
     // Copy user files from migration source to the new ComfyUI folder.
     const srcUserFilesDir = path.join(this.migrationSource, 'user');
-    const destUserFilesDir = path.join(this.basePath, 'user');
+    const destUserFilesDir = path.join(useDesktopConfig().get('basePath')!, 'user');
     fs.cpSync(srcUserFilesDir, destUserFilesDir, { recursive: true });
   }
 
@@ -53,7 +51,6 @@ export class InstallWizard implements HasTelemetry {
    */
   public initializeSettings() {
     const settings = {
-      ...DEFAULT_SETTINGS,
       'Comfy-Desktop.AutoUpdate': this.installOptions.autoUpdate,
       'Comfy-Desktop.SendStatistics': this.installOptions.allowMetrics,
       'Comfy-Desktop.UV.PythonInstallMirror': this.installOptions.pythonMirror,
@@ -66,9 +63,9 @@ export class InstallWizard implements HasTelemetry {
     const launchArgs = comfySettings.get('Comfy.Server.LaunchArgs') ?? {};
     if (this.installOptions.device === 'cpu') {
       launchArgs['cpu'] = '';
+      comfySettings.set('Comfy.Server.LaunchArgs', launchArgs);
     }
 
-    comfySettings.set('Comfy.Server.LaunchArgs', launchArgs);
     comfySettings.saveSettings();
   }
 
@@ -79,7 +76,7 @@ export class InstallWizard implements HasTelemetry {
     let yamlContent: Record<string, ModelPaths>;
 
     const comfyDesktopConfig = ComfyServerConfig.getBaseConfig();
-    comfyDesktopConfig['base_path'] = this.basePath;
+    comfyDesktopConfig['base_path'] = useDesktopConfig().get('basePath')!;
 
     const { migrationSource } = this;
     const shouldMigrateModels = !!migrationSource && this.migrationItemIds.has('models');

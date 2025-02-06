@@ -110,6 +110,8 @@ export class ComfySettings implements IComfySettings {
         this.settings = { ...DEFAULT_SETTINGS, ...parsed };
       } else {
         log.info(`Settings file ${this.filePath} does not exist. Using default settings.`);
+        this.settings = DEFAULT_SETTINGS;
+        this.isInitialized = true;
         this.saveSettings();
       }
     } catch (error) {

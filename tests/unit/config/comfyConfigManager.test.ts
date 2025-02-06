@@ -17,6 +17,14 @@ vi.mock('electron-log/main', () => ({
   },
 }));
 
+vi.mock('@/store/desktopConfig', () => ({
+  useDesktopConfig: vi.fn().mockReturnValue({
+    get: vi.fn().mockImplementation((key) => {
+      if (key === 'basePath') return path.normalize('/fake/path/ComfyUI');
+    }),
+  }),
+}));
+
 describe('ComfyConfigManager', () => {
   // Reset all mocks before each test
   beforeEach(() => {
@@ -30,7 +38,7 @@ describe('ComfyConfigManager', () => {
   describe('setUpComfyUI', () => {
     it('should allow existing directory when it contains ComfyUI structure', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
-      expect(() => ComfyConfigManager.createComfyDirectories(path.normalize('/existing/ComfyUI'))).not.toThrow();
+      expect(() => ComfyConfigManager.createComfyDirectories()).not.toThrow();
     });
 
     it('should create ComfyUI subdirectory when it is missing', () => {
@@ -41,7 +49,7 @@ describe('ComfyConfigManager', () => {
         return true;
       });
 
-      ComfyConfigManager.createComfyDirectories(path.normalize('/some/base/path/ComfyUI'));
+      ComfyConfigManager.createComfyDirectories();
     });
   });
 
@@ -49,16 +57,16 @@ describe('ComfyConfigManager', () => {
     it('should return true when all required directories exist', () => {
       vi.mocked(fs.existsSync).mockImplementation((path: PathLike) => {
         const requiredDirs = [
-          normalize('/fake/path/models'),
-          normalize('/fake/path/input'),
-          normalize('/fake/path/user'),
-          normalize('/fake/path/output'),
-          normalize('/fake/path/custom_nodes'),
+          normalize('/fake/path/ComfyUI/models'),
+          normalize('/fake/path/ComfyUI/input'),
+          normalize('/fake/path/ComfyUI/user'),
+          normalize('/fake/path/ComfyUI/output'),
+          normalize('/fake/path/ComfyUI/custom_nodes'),
         ];
         return requiredDirs.includes(path.toString());
       });
 
-      const result = ComfyConfigManager.isComfyUIDirectory('/fake/path');
+      const result = ComfyConfigManager.isComfyUIDirectory('/fake/path/ComfyUI');
 
       expect(result).toBe(true);
       expect(fs.existsSync).toHaveBeenCalledTimes(5);
@@ -72,7 +80,7 @@ describe('ComfyConfigManager', () => {
         .mockReturnValueOnce(true) // output exists
         .mockReturnValueOnce(true); // custom_nodes exists
 
-      const result = ComfyConfigManager.isComfyUIDirectory('/fake/path');
+      const result = ComfyConfigManager.isComfyUIDirectory('/fake/path/ComfyUI');
 
       expect(result).toBe(false);
     });
@@ -82,7 +90,7 @@ describe('ComfyConfigManager', () => {
     it('should create all necessary directories when none exist', () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);
 
-      ComfyConfigManager.createComfyDirectories('/fake/path/ComfyUI');
+      ComfyConfigManager.createComfyDirectories();
 
       // Verify each required directory was created
       expect(fs.mkdirSync).toHaveBeenCalledWith(path.normalize('/fake/path/ComfyUI/models'), { recursive: true });
@@ -98,7 +106,7 @@ describe('ComfyConfigManager', () => {
       });
 
       const log = await import('electron-log/main');
-      ComfyConfigManager.createComfyDirectories('/fake/path/ComfyUI');
+      ComfyConfigManager.createComfyDirectories();
 
       expect(fs.mkdirSync).toHaveBeenCalled();
       expect(vi.mocked(log.default.error)).toHaveBeenCalledWith(expect.stringContaining('Permission denied'));
@@ -111,7 +119,7 @@ describe('ComfyConfigManager', () => {
 
       const structure = ['dir1', ['dir2', ['subdir1', 'subdir2']], ['dir3', [['subdir3', ['subsubdir1']]]]];
 
-      ComfyConfigManager['createNestedDirectories']('/fake/path', structure);
+      ComfyConfigManager['createNestedDirectories']('/fake/path/ComfyUI', structure);
 
       // Verify the correct paths were created
       expect(fs.mkdirSync).toHaveBeenCalledWith(expect.stringContaining('dir1'), expect.any(Object));
@@ -127,7 +135,7 @@ describe('ComfyConfigManager', () => {
         [123, ['subdir1']], // Invalid: non-string directory name
       ];
 
-      ComfyConfigManager['createNestedDirectories']('/fake/path', invalidStructure as DirectoryStructure);
+      ComfyConfigManager['createNestedDirectories']('/fake/path/ComfyUI', invalidStructure as DirectoryStructure);
 
       // Verify only valid directories were created
       expect(fs.mkdirSync).toHaveBeenCalledWith(expect.stringContaining('dir1'), expect.any(Object));
