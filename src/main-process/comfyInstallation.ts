@@ -2,7 +2,7 @@ import log from 'electron-log/main';
 import { rm } from 'node:fs/promises';
 
 import { ComfyServerConfig } from '../config/comfyServerConfig';
-import { ComfySettings } from '../config/comfySettings';
+import { comfySettings } from '../config/comfySettings';
 import type { DesktopInstallState } from '../main_types';
 import type { InstallValidation } from '../preload';
 import { type ITelemetry, getTelemetry } from '../services/telemetry';
@@ -15,11 +15,6 @@ import { VirtualEnvironment } from '../virtualEnvironment';
  * Used to set app state and validate the environment.
  */
 export class ComfyInstallation {
-  private _basePath: string;
-  public get basePath(): string {
-    return this._basePath;
-  }
-
   private _virtualEnvironment: VirtualEnvironment;
   public get virtualEnvironment(): VirtualEnvironment {
     return this._virtualEnvironment;
@@ -49,23 +44,19 @@ export class ComfyInstallation {
   constructor(
     /** Installation state, e.g. `started`, `installed`.  See {@link DesktopSettings}. */
     public state: DesktopInstallState,
-    /** The base path of the desktop app.  Models, nodes, and configuration are saved here by default. */
-    basePath: string,
     /** The device type to use for the installation. */
-    public readonly telemetry: ITelemetry,
-    public comfySettings: ComfySettings
+    public readonly telemetry: ITelemetry
   ) {
-    this._basePath = basePath;
-    this._virtualEnvironment = this.createVirtualEnvironment(basePath);
+    this._virtualEnvironment = this.createVirtualEnvironment();
   }
 
-  private createVirtualEnvironment(basePath: string) {
-    return new VirtualEnvironment(basePath, {
+  private createVirtualEnvironment() {
+    return new VirtualEnvironment(useDesktopConfig().get('basePath')!, {
       telemetry: this.telemetry,
       selectedDevice: useDesktopConfig().get('selectedDevice'),
-      pythonMirror: this.comfySettings.get('Comfy-Desktop.UV.PythonInstallMirror'),
-      pypiMirror: this.comfySettings.get('Comfy-Desktop.UV.PypiInstallMirror'),
-      torchMirror: this.comfySettings.get('Comfy-Desktop.UV.TorchInstallMirror'),
+      pythonMirror: comfySettings.get('Comfy-Desktop.UV.PythonInstallMirror'),
+      pypiMirror: comfySettings.get('Comfy-Desktop.UV.PypiInstallMirror'),
+      torchMirror: comfySettings.get('Comfy-Desktop.UV.TorchInstallMirror'),
     });
   }
 
@@ -74,14 +65,12 @@ export class ComfyInstallation {
    * @returns A ComfyInstallation (not validated) object if config is saved, otherwise `undefined`.
    * @throws If YAML config is unreadable due to access restrictions
    */
-  static async fromConfig(): Promise<ComfyInstallation | undefined> {
+  static fromConfig(): ComfyInstallation | undefined {
     const config = useDesktopConfig();
     const state = config.get('installState');
     const basePath = config.get('basePath');
     if (state && basePath) {
-      const comfySettings = new ComfySettings(basePath);
-      await comfySettings.loadSettings();
-      return new ComfyInstallation(state, basePath, getTelemetry(), comfySettings);
+      return new ComfyInstallation(state, getTelemetry());
     }
   }
 
@@ -109,7 +98,7 @@ export class ComfyInstallation {
     // Validate base path
     const basePath = useDesktopConfig().get('basePath');
     if (basePath && (await pathAccessible(basePath))) {
-      await this.updateBasePathAndVenv(basePath);
+      this.recreateVenv();
 
       validation.basePath = 'OK';
       this.onUpdate?.(validation);
@@ -190,7 +179,7 @@ export class ComfyInstallation {
     log.verbose(`Upgrading config to latest format.  Current state: [${this.state}]`);
     // Migrate config
     if (this.validation.basePath !== 'error') {
-      useDesktopConfig().set('basePath', this.basePath);
+      // useDesktopConfig().set('basePath', this.basePath);
     } else {
       log.warn('Skipping save of basePath.');
     }
@@ -210,14 +199,8 @@ export class ComfyInstallation {
    * Updates the base path and recreates the virtual environment (object).
    * @param basePath The new base path to set.
    */
-  async updateBasePathAndVenv(basePath: string) {
-    if (this._basePath === basePath) return;
-
-    this._basePath = basePath;
-    this._virtualEnvironment = this.createVirtualEnvironment(basePath);
-    this.comfySettings = new ComfySettings(basePath);
-    await this.comfySettings.loadSettings();
-    useDesktopConfig().set('basePath', basePath);
+  recreateVenv() {
+    this._virtualEnvironment = this.createVirtualEnvironment();
   }
 
   /**

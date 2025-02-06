@@ -1,6 +1,8 @@
 import log from 'electron-log/main';
-import fs from 'node:fs/promises';
+import fs from 'node:fs';
 import path from 'node:path';
+
+import { useDesktopConfig } from '@/store/desktopConfig';
 
 export const DEFAULT_SETTINGS: ComfySettingsData = {
   'Comfy-Desktop.AutoUpdate': true,
@@ -61,7 +63,7 @@ export interface IComfySettings extends FrontendSettingsCache {
    * Can only be called before the ComfyUI server starts.
    * @throws Error if called after the ComfyUI server has started
    */
-  saveSettings(): Promise<void>;
+  saveSettings(): void;
 }
 
 /**
@@ -75,13 +77,12 @@ export interface IComfySettings extends FrontendSettingsCache {
  * @see {@link IComfySettings} read-write interface
  */
 export class ComfySettings implements IComfySettings {
-  public readonly filePath: string;
-  private settings: ComfySettingsData = structuredClone(DEFAULT_SETTINGS);
+  private static instance: ComfySettings;
   private static writeLocked = false;
+  private settings: ComfySettingsData = structuredClone(DEFAULT_SETTINGS);
+  private isInitialized = false;
 
-  constructor(basePath: string) {
-    this.filePath = path.join(basePath, 'user', 'default', 'comfy.settings.json');
-  }
+  private constructor() {}
 
   /**
    * Locks the settings to prevent further modifications.
@@ -91,26 +92,33 @@ export class ComfySettings implements IComfySettings {
     ComfySettings.writeLocked = true;
   }
 
-  public async loadSettings() {
-    try {
-      await fs.access(this.filePath);
-    } catch {
-      log.info(`Settings file ${this.filePath} does not exist. Using default settings.`);
-      return;
+  private get filePath(): string {
+    const basePath = useDesktopConfig().get('basePath');
+    if (!basePath) {
+      throw new Error('Base path is not set');
     }
+    return path.join(basePath, 'user', 'default', 'comfy.settings.json');
+  }
+
+  private loadSettings() {
+    if (this.isInitialized) return;
+
     try {
-      const fileContent = await fs.readFile(this.filePath, 'utf8');
-      // TODO: Reimplement with validation and error reporting.
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      this.settings = JSON.parse(fileContent);
+      if (fs.existsSync(this.filePath)) {
+        const fileContent = fs.readFileSync(this.filePath, 'utf8');
+        const parsed = JSON.parse(fileContent) as Partial<ComfySettingsData>;
+        this.settings = { ...DEFAULT_SETTINGS, ...parsed };
+      } else {
+        log.info(`Settings file ${this.filePath} does not exist. Using default settings.`);
+        this.saveSettings();
+      }
     } catch (error) {
       log.error(`Settings file cannot be loaded.`, error);
     }
+    this.isInitialized = true;
   }
 
-  async saveSettings() {
-    if (!this.settings) return;
-
+  saveSettings() {
     if (ComfySettings.writeLocked) {
       const error = new Error('Settings are locked and cannot be modified');
       log.error(error);
@@ -118,7 +126,7 @@ export class ComfySettings implements IComfySettings {
     }
 
     try {
-      await fs.writeFile(this.filePath, JSON.stringify(this.settings, null, 2));
+      fs.writeFileSync(this.filePath, JSON.stringify(this.settings, null, 2));
     } catch (error) {
       log.error('Failed to save settings:', error);
       throw error;
@@ -133,6 +141,19 @@ export class ComfySettings implements IComfySettings {
   }
 
   get<K extends keyof ComfySettingsData>(key: K): ComfySettingsData[K] {
+    if (!this.isInitialized) {
+      this.loadSettings();
+    }
     return this.settings[key] ?? DEFAULT_SETTINGS[key];
   }
+
+  static getInstance(): ComfySettings {
+    if (!ComfySettings.instance) {
+      ComfySettings.instance = new ComfySettings();
+    }
+    return ComfySettings.instance;
+  }
 }
+
+export const comfySettings = ComfySettings.getInstance();
+export const lockWrites = () => ComfySettings.lockWrites();

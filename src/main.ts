@@ -42,9 +42,6 @@ async function startApp() {
   await new Promise<void>((resolve) => app.once('ready', () => resolve()));
   log.debug('App ready');
 
-  telemetry.registerHandlers();
-  telemetry.track('desktop:app_ready');
-
   // Load config or exit
   const config = await DesktopConfig.load(shell);
   if (!config) {
@@ -54,6 +51,9 @@ async function startApp() {
       exitCode: 20,
     });
   }
+
+  telemetry.registerHandlers();
+  telemetry.track('desktop:app_ready');
 
   const desktopApp = new DesktopApp(appState, overrides, config);
   await desktopApp.showLoadingPage();

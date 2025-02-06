@@ -9,6 +9,7 @@ import { promisify } from 'node:util';
 import si from 'systeminformation';
 
 import type { GpuType } from './preload';
+import { useDesktopConfig } from './store/desktopConfig';
 
 export const ansiCodes = /[\u001B\u009B][#();?[]*(?:\d{1,4}(?:;\d{0,4})*)?[\d<=>A-ORZcf-nqry]/g;
 
@@ -59,8 +60,8 @@ export async function containsDirectory(path: string, contains: string): Promise
   return false;
 }
 
-export function getModelsDirectory(comfyUIBasePath: string): string {
-  return path.join(comfyUIBasePath, 'models');
+export function getModelsDirectory(): string {
+  return path.join(useDesktopConfig().get('basePath')!, 'models');
 }
 
 export function findAvailablePort(host: string, startPort: number, endPort: number): Promise<number> {

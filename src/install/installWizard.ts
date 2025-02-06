@@ -1,10 +1,9 @@
-import log from 'electron-log/main';
 import fs from 'node:fs';
 import path from 'node:path';
 
 import { ComfyConfigManager } from '../config/comfyConfigManager';
 import { ComfyServerConfig, ModelPaths } from '../config/comfyServerConfig';
-import { type ComfySettingsData, DEFAULT_SETTINGS } from '../config/comfySettings';
+import { DEFAULT_SETTINGS, comfySettings } from '../config/comfySettings';
 import { InstallOptions } from '../preload';
 import { HasTelemetry, ITelemetry, trackEvent } from '../services/telemetry';
 
@@ -53,30 +52,24 @@ export class InstallWizard implements HasTelemetry {
    * Setup comfy.settings.json file
    */
   public initializeSettings() {
-    const settingsPath = path.join(this.basePath, 'user', 'default', 'comfy.settings.json');
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const existingSettings: ComfySettingsData = fs.existsSync(settingsPath)
-      ? JSON.parse(fs.readFileSync(settingsPath, 'utf8'))
-      : {};
-
     const settings = {
       ...DEFAULT_SETTINGS,
-      ...existingSettings,
       'Comfy-Desktop.AutoUpdate': this.installOptions.autoUpdate,
       'Comfy-Desktop.SendStatistics': this.installOptions.allowMetrics,
       'Comfy-Desktop.UV.PythonInstallMirror': this.installOptions.pythonMirror,
       'Comfy-Desktop.UV.PypiInstallMirror': this.installOptions.pypiMirror,
       'Comfy-Desktop.UV.TorchInstallMirror': this.installOptions.torchMirror,
     };
-
+    for (const [key, value] of Object.entries(settings)) {
+      comfySettings.set(key, value);
+    }
+    const launchArgs = comfySettings.get('Comfy.Server.LaunchArgs') ?? {};
     if (this.installOptions.device === 'cpu') {
-      settings['Comfy.Server.LaunchArgs'] ??= {};
-      settings['Comfy.Server.LaunchArgs']['cpu'] = '';
+      launchArgs['cpu'] = '';
     }
 
-    const settingsJson = JSON.stringify(settings, null, 2);
-    fs.writeFileSync(settingsPath, settingsJson);
-    log.info(`Wrote settings to ${settingsPath}: ${settingsJson}`);
+    comfySettings.set('Comfy.Server.LaunchArgs', launchArgs);
+    comfySettings.saveSettings();
   }
 
   /**

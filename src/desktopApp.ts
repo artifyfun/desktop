@@ -43,14 +43,9 @@ export class DesktopApp implements HasTelemetry {
     }
   }
 
-  private async initializeTelemetry(installation: ComfyInstallation): Promise<void> {
-    const { comfySettings } = installation;
-
+  private async initializeTelemetry(): Promise<void> {
     await SentryLogging.setSentryGpuContext();
-    SentryLogging.shouldSendStatistics = () => comfySettings.get('Comfy-Desktop.SendStatistics');
-    SentryLogging.getBasePath = () => installation.basePath;
-
-    const allowMetrics = await promptMetricsConsent(this.config, this.appWindow, comfySettings);
+    const allowMetrics = await promptMetricsConsent(this.config, this.appWindow);
     this.telemetry.hasConsent = allowMetrics;
     if (allowMetrics) this.telemetry.flush();
   }
@@ -85,7 +80,7 @@ export class DesktopApp implements HasTelemetry {
     if (!installation) return;
 
     // At this point, user has gone through the onboarding flow.
-    await this.initializeTelemetry(installation);
+    await this.initializeTelemetry();
 
     try {
       // Initialize app
@@ -146,7 +141,7 @@ export class DesktopApp implements HasTelemetry {
    * @param options - The options for the error.
    */
   static fatalError({ message, error, title, logMessage, exitCode }: FatalErrorOptions): never {
-    const _error = error ?? new Error(message);
+    const _error = error instanceof Error ? error : new Error(message);
     log.error(logMessage ?? message, _error);
     if (title && message) dialog.showErrorBox(title, message);
 

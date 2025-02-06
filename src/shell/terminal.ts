@@ -1,6 +1,8 @@
 import pty from 'node-pty';
 import { EOL } from 'node:os';
 
+import { useDesktopConfig } from '@/store/desktopConfig';
+
 import { IPC_CHANNELS } from '../constants';
 import { AppWindow } from '../main-process/appWindow';
 import { getDefaultShell } from './util';
@@ -13,7 +15,6 @@ import { getDefaultShell } from './util';
 export class Terminal {
   #pty: pty.IPty | undefined;
   readonly #window: AppWindow | undefined;
-  readonly #cwd: string | undefined;
   readonly #uvPath: string | undefined;
 
   readonly sessionBuffer: string[] = [];
@@ -29,9 +30,8 @@ export class Terminal {
     return this.#window;
   }
 
-  constructor(window: AppWindow, cwd: string, uvPath: string) {
+  constructor(window: AppWindow, uvPath: string) {
     this.#window = window;
-    this.#cwd = cwd;
     this.#uvPath = uvPath;
   }
 
@@ -62,7 +62,7 @@ export class Terminal {
       name: 'xterm',
       cols: this.size.cols,
       rows: this.size.rows,
-      cwd: this.#cwd,
+      cwd: useDesktopConfig().get('basePath')!,
     });
 
     if (process.platform === 'win32') {

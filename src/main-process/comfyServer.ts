@@ -4,8 +4,10 @@ import { ChildProcess } from 'node:child_process';
 import path from 'node:path';
 import waitOn from 'wait-on';
 
+import { lockWrites } from '@/config/comfySettings';
+import { useDesktopConfig } from '@/store/desktopConfig';
+
 import { ComfyServerConfig } from '../config/comfyServerConfig';
-import { ComfySettings } from '../config/comfySettings';
 import { IPC_CHANNELS, ServerArgs } from '../constants';
 import { getAppResourcesPath } from '../install/resourcePaths';
 import { HasTelemetry, ITelemetry, trackEvent } from '../services/telemetry';
@@ -29,7 +31,6 @@ export class ComfyServer implements HasTelemetry {
   private comfyServerProcess: ChildProcess | null = null;
 
   constructor(
-    public basePath: string,
     public serverArgs: ServerArgs,
     public virtualEnvironment: VirtualEnvironment,
     public appWindow: AppWindow,
@@ -56,15 +57,15 @@ export class ComfyServer implements HasTelemetry {
   }
 
   get userDirectoryPath() {
-    return path.join(this.basePath, 'user');
+    return path.join(useDesktopConfig().get('basePath')!, 'user');
   }
 
   get inputDirectoryPath() {
-    return path.join(this.basePath, 'input');
+    return path.join(useDesktopConfig().get('basePath')!, 'input');
   }
 
   get outputDirectoryPath() {
-    return path.join(this.basePath, 'output');
+    return path.join(useDesktopConfig().get('basePath')!, 'output');
   }
 
   /**
@@ -77,7 +78,7 @@ export class ComfyServer implements HasTelemetry {
       'input-directory': this.inputDirectoryPath,
       'output-directory': this.outputDirectoryPath,
       'front-end-root': this.webRootPath,
-      'base-directory': this.basePath,
+      'base-directory': useDesktopConfig().get('basePath')!,
       'extra-model-paths-config': ComfyServerConfig.configPath,
     };
   }
@@ -101,7 +102,7 @@ export class ComfyServer implements HasTelemetry {
 
   @trackEvent('comfyui:server_start')
   async start() {
-    ComfySettings.lockWrites();
+    lockWrites();
     await ComfyServerConfig.addAppBundledCustomNodesToConfig();
     await rotateLogFiles(app.getPath('logs'), 'comfyui', 50);
     return new Promise<void>((resolve, reject) => {

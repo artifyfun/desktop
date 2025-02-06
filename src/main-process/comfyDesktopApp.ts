@@ -2,6 +2,8 @@ import todesktop from '@todesktop/runtime';
 import { app, ipcMain } from 'electron';
 import log from 'electron-log/main';
 
+import { comfySettings } from '@/config/comfySettings';
+
 import { DEFAULT_SERVER_ARGS, IPC_CHANNELS, ProgressStatus, ServerArgs } from '../constants';
 import { DownloadManager } from '../models/DownloadManager';
 import { HasTelemetry, ITelemetry } from '../services/telemetry';
@@ -22,14 +24,6 @@ export class ComfyDesktopApp implements HasTelemetry {
     readonly telemetry: ITelemetry
   ) {}
 
-  get comfySettings() {
-    return this.installation.comfySettings;
-  }
-
-  get basePath() {
-    return this.installation.basePath;
-  }
-
   public initialize(): void {
     this.registerIPCHandlers();
     this.initializeTodesktop();
@@ -47,7 +41,7 @@ export class ComfyDesktopApp implements HasTelemetry {
     const serverArgs: ServerArgs = {
       listen: DEFAULT_SERVER_ARGS.listen,
       port: DEFAULT_SERVER_ARGS.port,
-      ...this.comfySettings.get('Comfy.Server.LaunchArgs'),
+      ...comfySettings.get('Comfy.Server.LaunchArgs'),
     };
 
     if (COMFY_HOST) serverArgs.listen = COMFY_HOST;
@@ -69,7 +63,7 @@ export class ComfyDesktopApp implements HasTelemetry {
       autoCheckInterval: 60 * 60 * 1000, // every hour
       customLogger: log,
       updateReadyAction: { showInstallAndRestartPrompt: 'always', showNotification: 'always' },
-      autoUpdater: this.comfySettings.get('Comfy-Desktop.AutoUpdate'),
+      autoUpdater: comfySettings.get('Comfy-Desktop.AutoUpdate'),
     });
     todesktop.autoUpdater?.setFeedURL('https://updater.comfy.org');
   }
@@ -100,18 +94,18 @@ export class ComfyDesktopApp implements HasTelemetry {
       await this.appWindow.loadPage('server-start');
     }
 
-    DownloadManager.getInstance(this.appWindow, getModelsDirectory(this.basePath));
+    DownloadManager.getInstance(this.appWindow, getModelsDirectory());
 
     const { virtualEnvironment } = this.installation;
 
     this.appWindow.sendServerStartProgress(ProgressStatus.STARTING_SERVER);
-    this.comfyServer = new ComfyServer(this.basePath, serverArgs, virtualEnvironment, this.appWindow, this.telemetry);
+    this.comfyServer = new ComfyServer(serverArgs, virtualEnvironment, this.appWindow, this.telemetry);
     await this.comfyServer.start();
     this.initializeTerminal(virtualEnvironment);
   }
 
   private initializeTerminal(virtualEnvironment: VirtualEnvironment) {
-    this.terminal = new Terminal(this.appWindow, this.basePath, virtualEnvironment.uvPath);
+    this.terminal = new Terminal(this.appWindow, virtualEnvironment.uvPath);
     this.terminal.write(virtualEnvironment.activateEnvironmentCommand());
 
     ipcMain.handle(IPC_CHANNELS.TERMINAL_WRITE, (_event, command: string) => {
