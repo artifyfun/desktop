@@ -2,7 +2,6 @@ import log from 'electron-log/main';
 import { rm } from 'node:fs/promises';
 
 import { ComfyServerConfig } from '../config/comfyServerConfig';
-import { comfySettings } from '../config/comfySettings';
 import type { DesktopInstallState } from '../main_types';
 import type { InstallValidation } from '../preload';
 import { type ITelemetry, getTelemetry } from '../services/telemetry';
@@ -51,13 +50,7 @@ export class ComfyInstallation {
   }
 
   private createVirtualEnvironment() {
-    return new VirtualEnvironment(useDesktopConfig().get('basePath')!, {
-      telemetry: this.telemetry,
-      selectedDevice: useDesktopConfig().get('selectedDevice'),
-      pythonMirror: comfySettings.get('Comfy-Desktop.UV.PythonInstallMirror'),
-      pypiMirror: comfySettings.get('Comfy-Desktop.UV.PypiInstallMirror'),
-      torchMirror: comfySettings.get('Comfy-Desktop.UV.TorchInstallMirror'),
-    });
+    return new VirtualEnvironment();
   }
 
   /**

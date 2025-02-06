@@ -6,10 +6,11 @@ import { rm } from 'node:fs/promises';
 import os, { EOL } from 'node:os';
 import path from 'node:path';
 
+import { comfySettings } from './config/comfySettings';
 import { CUDA_TORCH_URL, NIGHTLY_CPU_TORCH_URL } from './constants';
-import type { TorchDeviceType } from './preload';
-import { HasTelemetry, ITelemetry, trackEvent } from './services/telemetry';
+import { HasTelemetry, getTelemetry, trackEvent } from './services/telemetry';
 import { getDefaultShell, getDefaultShellArgs } from './shell/util';
+import { useDesktopConfig } from './store/desktopConfig';
 import { pathAccessible } from './utils';
 
 export type ProcessCallbacks = {
@@ -64,7 +65,8 @@ export function getPipInstallArgs(config: PipInstallConfig): string[] {
  * @param device The device type
  * @returns The default torch mirror
  */
-const getDefaultTorchMirror = (device: TorchDeviceType): string => {
+const getDefaultTorchMirror = (): string => {
+  const device = useDesktopConfig().get('selectedDevice') ?? 'cpu';
   switch (device) {
     case 'mps':
       return NIGHTLY_CPU_TORCH_URL;
@@ -82,31 +84,26 @@ const getDefaultTorchMirror = (device: TorchDeviceType): string => {
  * @todo Split either installation or terminal management to a separate class.
  */
 export class VirtualEnvironment implements HasTelemetry {
-  readonly venvRootPath: string;
-  readonly venvPath: string;
-  readonly pythonVersion: string;
+  readonly pythonVersion = '3.12';
   readonly uvPath: string;
   readonly requirementsCompiledPath: string;
-  readonly cacheDir: string;
   readonly pythonInterpreterPath: string;
   readonly comfyUIRequirementsPath: string;
   readonly comfyUIManagerRequirementsPath: string;
-  readonly selectedDevice: TorchDeviceType;
-  readonly telemetry: ITelemetry;
-  readonly pythonMirror?: string;
-  readonly pypiMirror?: string;
-  readonly torchMirror?: string;
+  readonly telemetry = getTelemetry();
   uvPty: pty.IPty | undefined;
 
   /** @todo Refactor to `using` */
   get uvPtyInstance() {
-    const env = {
+    const env: Record<string, string> = {
       ...(process.env as Record<string, string>),
       VIRTUAL_ENV: this.venvPath,
-      // Empty strings are not valid values for these env vars,
-      // dropping them here to avoid passing them to uv.
-      ...(this.pythonMirror ? { UV_PYTHON_INSTALL_MIRROR: this.pythonMirror } : {}),
     };
+    // Empty strings are not valid values for these env vars,
+    const pythonMirror = comfySettings.get('Comfy-Desktop.UV.PythonInstallMirror');
+    if (pythonMirror) {
+      env.UV_PYTHON_INSTALL_MIRROR = pythonMirror;
+    }
 
     if (!this.uvPty) {
       const shell = getDefaultShell();
@@ -121,34 +118,7 @@ export class VirtualEnvironment implements HasTelemetry {
     return this.uvPty;
   }
 
-  constructor(
-    venvPath: string,
-    {
-      telemetry,
-      selectedDevice,
-      pythonVersion,
-      pythonMirror,
-      pypiMirror,
-      torchMirror,
-    }: {
-      telemetry: ITelemetry;
-      selectedDevice?: TorchDeviceType;
-      pythonVersion?: string;
-      pythonMirror?: string;
-      pypiMirror?: string;
-      torchMirror?: string;
-    }
-  ) {
-    this.venvRootPath = venvPath;
-    this.telemetry = telemetry;
-    this.pythonVersion = pythonVersion ?? '3.12';
-    this.selectedDevice = selectedDevice ?? 'cpu';
-    this.pythonMirror = pythonMirror;
-    this.pypiMirror = pypiMirror;
-    this.torchMirror = torchMirror;
-
-    // uv defaults to .venv
-    this.venvPath = path.join(venvPath, '.venv');
+  constructor() {
     const resourcesPath = app.isPackaged ? path.join(process.resourcesPath) : path.join(app.getAppPath(), 'assets');
     this.comfyUIRequirementsPath = path.join(resourcesPath, 'ComfyUI', 'requirements.txt');
     this.comfyUIManagerRequirementsPath = path.join(
@@ -158,8 +128,6 @@ export class VirtualEnvironment implements HasTelemetry {
       'ComfyUI-Manager',
       'requirements.txt'
     );
-
-    this.cacheDir = path.join(venvPath, 'uv-cache');
 
     const filename = `${compiledRequirements()}.compiled`;
     this.requirementsCompiledPath = path.join(resourcesPath, 'requirements', filename);
@@ -191,9 +159,22 @@ export class VirtualEnvironment implements HasTelemetry {
     function compiledRequirements() {
       if (process.platform === 'darwin') return 'macos';
       if (process.platform === 'win32') {
-        return selectedDevice === 'cpu' ? 'windows_cpu' : 'windows_nvidia';
+        return useDesktopConfig().get('selectedDevice') === 'cpu' ? 'windows_cpu' : 'windows_nvidia';
       }
     }
+  }
+
+  get venvPath() {
+    // uv defaults to .venv
+    return path.join(useDesktopConfig().get('basePath')!, '.venv');
+  }
+
+  get venvRootPath() {
+    return useDesktopConfig().get('basePath')!;
+  }
+
+  get cacheDir() {
+    return path.join(this.venvPath, 'uv-cache');
   }
 
   public async create(callbacks?: ProcessCallbacks): Promise<void> {
@@ -224,9 +205,9 @@ export class VirtualEnvironment implements HasTelemetry {
   private async createEnvironment(callbacks?: ProcessCallbacks): Promise<void> {
     this.telemetry.track(`install_flow:virtual_environment_create_start`, {
       python_version: this.pythonVersion,
-      device: this.selectedDevice,
+      device: useDesktopConfig().get('selectedDevice')!,
     });
-    if (this.selectedDevice === 'unsupported') {
+    if (useDesktopConfig().get('selectedDevice') === 'unsupported') {
       log.info('User elected to manually configure their environment.  Skipping python configuration.');
       this.telemetry.track(`install_flow:virtual_environment_create_end`, {
         reason: 'unsupported_device',
@@ -291,7 +272,7 @@ export class VirtualEnvironment implements HasTelemetry {
       requirementsFile: this.requirementsCompiledPath,
       indexStrategy: 'unsafe-best-match',
       packages: [],
-      indexUrl: this.pypiMirror,
+      indexUrl: comfySettings.get('Comfy-Desktop.UV.PypiInstallMirror'),
     });
     const { exitCode } = await this.runUvCommandAsync(installCmd, callbacks);
     if (exitCode !== 0) {
@@ -456,7 +437,7 @@ export class VirtualEnvironment implements HasTelemetry {
   }
 
   async installPytorch(callbacks?: ProcessCallbacks): Promise<void> {
-    const torchMirror = this.torchMirror || getDefaultTorchMirror(this.selectedDevice);
+    const torchMirror = comfySettings.get('Comfy-Desktop.UV.TorchInstallMirror') || getDefaultTorchMirror();
     const config: PipInstallConfig = {
       packages: ['torch', 'torchvision', 'torchaudio'],
       indexUrl: torchMirror,
@@ -478,7 +459,7 @@ export class VirtualEnvironment implements HasTelemetry {
     const installCmd = getPipInstallArgs({
       requirementsFile: this.comfyUIRequirementsPath,
       packages: [],
-      indexUrl: this.pypiMirror,
+      indexUrl: comfySettings.get('Comfy-Desktop.UV.PypiInstallMirror'),
     });
     const { exitCode } = await this.runUvCommandAsync(installCmd, callbacks);
     if (exitCode !== 0) {
@@ -491,7 +472,7 @@ export class VirtualEnvironment implements HasTelemetry {
     const installCmd = getPipInstallArgs({
       requirementsFile: this.comfyUIManagerRequirementsPath,
       packages: [],
-      indexUrl: this.pypiMirror,
+      indexUrl: comfySettings.get('Comfy-Desktop.UV.PypiInstallMirror'),
     });
     const { exitCode } = await this.runUvCommandAsync(installCmd, callbacks);
     if (exitCode !== 0) {
