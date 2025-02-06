@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ComfySettings } from '@/config/comfySettings';
+import { comfySettings } from '@/config/comfySettings';
 import { IPC_CHANNELS } from '@/constants';
 import type { AppWindow } from '@/main-process/appWindow';
 import { MixpanelTelemetry, promptMetricsConsent } from '@/services/telemetry';
@@ -30,6 +30,14 @@ vi.mock('mixpanel', () => ({
     people: {
       increment: vi.fn(),
     },
+  },
+}));
+
+vi.mock('@/config/comfySettings', () => ({
+  comfySettings: {
+    get: vi.fn(),
+    set: vi.fn(),
+    saveSettings: vi.fn(),
   },
 }));
 
@@ -197,7 +205,11 @@ describe('MixpanelTelemetry', () => {
 describe('promptMetricsConsent', () => {
   let store: Pick<DesktopConfig, 'get' | 'set'>;
   let appWindow: Pick<AppWindow, 'loadPage'>;
-  let comfySettings: Pick<ComfySettings, 'get' | 'set' | 'saveSettings'>;
+  let mockComfySettings: {
+    get: ReturnType<typeof vi.fn>;
+    set: ReturnType<typeof vi.fn>;
+    saveSettings: ReturnType<typeof vi.fn>;
+  };
 
   const versionBeforeUpdate = '0.4.1';
   const versionAfterUpdate = '1.0.1';
@@ -206,7 +218,7 @@ describe('promptMetricsConsent', () => {
     vi.clearAllMocks();
     store = { get: vi.fn(), set: vi.fn() };
     appWindow = { loadPage: vi.fn() };
-    comfySettings = { get: vi.fn(), set: vi.fn(), saveSettings: vi.fn() };
+    mockComfySettings = vi.mocked(comfySettings);
   });
 
   const runTest = async ({
@@ -223,7 +235,7 @@ describe('promptMetricsConsent', () => {
     promptUser?: boolean;
   }) => {
     vi.mocked(store.get).mockReturnValue(storeValue);
-    vi.mocked(comfySettings.get).mockReturnValue(settingsValue);
+    mockComfySettings.get.mockReturnValue(settingsValue);
 
     if (promptUser) {
       vi.mocked(ipcMain.handleOnce).mockImplementationOnce((channel, handler) => {
@@ -234,7 +246,7 @@ describe('promptMetricsConsent', () => {
     }
 
     // @ts-expect-error - store is a mock and doesn't implement all of DesktopConfig
-    const result = await promptMetricsConsent(store, appWindow, comfySettings);
+    const result = await promptMetricsConsent(store, appWindow);
     expect(result).toBe(expectedResult);
 
     if (promptUser) ipcMain.removeHandler(IPC_CHANNELS.SET_METRICS_CONSENT);

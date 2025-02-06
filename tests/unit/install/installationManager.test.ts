@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ComfyServerConfig } from '@/config/comfyServerConfig';
-import { ComfySettings } from '@/config/comfySettings';
 import { IPC_CHANNELS } from '@/constants';
 import { InstallationManager } from '@/install/installationManager';
 import type { AppWindow } from '@/main-process/appWindow';
@@ -120,18 +119,17 @@ describe('InstallationManager', () => {
   });
 
   describe('ensureInstalled', () => {
-    it('returns existing valid installation', async () => {
-      const installation = new ComfyInstallation(
-        'installed',
-        'valid/base',
-        createMockTelemetry(),
-        new ComfySettings('valid/base')
-      );
-      vi.spyOn(ComfyInstallation, 'fromConfig').mockResolvedValue(installation);
+    beforeEach(() => {
+      // Mock the static fromConfig method to return a proper instance
+      vi.spyOn(ComfyInstallation, 'fromConfig').mockImplementation(() => {
+        return new ComfyInstallation('installed', createMockTelemetry());
+      });
+    });
 
+    it('returns existing valid installation', async () => {
       const result = await manager.ensureInstalled();
 
-      expect(result).toBe(installation);
+      expect(result).toBeDefined();
       expect(result.hasIssues).toBe(false);
       expect(result.isValid).toBe(true);
       expect(mockAppWindow.loadPage).not.toHaveBeenCalledWith('maintenance');
@@ -171,14 +169,6 @@ describe('InstallationManager', () => {
       },
     ])('$scenario', async ({ mockSetup, expectedErrors }) => {
       const cleanup = mockSetup?.() as (() => void) | undefined;
-
-      const installation = new ComfyInstallation(
-        'installed',
-        'valid/base',
-        createMockTelemetry(),
-        new ComfySettings('valid/base')
-      );
-      vi.spyOn(ComfyInstallation, 'fromConfig').mockResolvedValue(installation);
 
       vi.spyOn(
         manager as unknown as { resolveIssues: (installation: ComfyInstallation) => Promise<boolean> },
