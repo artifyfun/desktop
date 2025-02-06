@@ -125,6 +125,8 @@ export class ComfySettings implements IComfySettings {
       throw error;
     }
 
+    if (!this.isInitialized) this.loadSettings();
+
     try {
       fs.writeFileSync(this.filePath, JSON.stringify(this.settings, null, 2));
     } catch (error) {
@@ -134,23 +136,19 @@ export class ComfySettings implements IComfySettings {
   }
 
   set<K extends keyof ComfySettingsData>(key: K, value: ComfySettingsData[K]) {
-    if (ComfySettings.writeLocked) {
-      throw new Error('Settings are locked and cannot be modified');
-    }
+    if (ComfySettings.writeLocked) throw new Error('Settings are locked and cannot be modified');
+    if (!this.isInitialized) this.loadSettings();
+
     this.settings[key] = value;
   }
 
   get<K extends keyof ComfySettingsData>(key: K): ComfySettingsData[K] {
-    if (!this.isInitialized) {
-      this.loadSettings();
-    }
+    if (!this.isInitialized) this.loadSettings();
     return this.settings[key] ?? DEFAULT_SETTINGS[key];
   }
 
   static getInstance(): ComfySettings {
-    if (!ComfySettings.instance) {
-      ComfySettings.instance = new ComfySettings();
-    }
+    if (!ComfySettings.instance) ComfySettings.instance = new ComfySettings();
     return ComfySettings.instance;
   }
 }
