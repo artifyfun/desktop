@@ -107,10 +107,9 @@ export class ComfySettings implements IComfySettings {
       if (fs.existsSync(this.filePath)) {
         const fileContent = fs.readFileSync(this.filePath, 'utf8');
         const parsed = JSON.parse(fileContent) as Partial<ComfySettingsData>;
-        this.settings = { ...DEFAULT_SETTINGS, ...parsed };
+        this.settings = { ...this.settings, ...parsed };
       } else {
         log.info(`Settings file ${this.filePath} does not exist. Using default settings.`);
-        this.settings = DEFAULT_SETTINGS;
         this.isInitialized = true;
         this.saveSettings();
       }
