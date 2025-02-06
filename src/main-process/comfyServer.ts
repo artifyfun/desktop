@@ -10,7 +10,7 @@ import { useDesktopConfig } from '@/store/desktopConfig';
 import { ComfyServerConfig } from '../config/comfyServerConfig';
 import { IPC_CHANNELS, ServerArgs } from '../constants';
 import { getAppResourcesPath } from '../install/resourcePaths';
-import { HasTelemetry, ITelemetry, trackEvent } from '../services/telemetry';
+import { HasTelemetry, getTelemetry, trackEvent } from '../services/telemetry';
 import { ansiCodes, rotateLogFiles } from '../utils';
 import { VirtualEnvironment } from '../virtualEnvironment';
 import { AppWindow } from './appWindow';
@@ -29,12 +29,12 @@ export class ComfyServer implements HasTelemetry {
   public static readonly CHECK_INTERVAL = 1000; // Check every second
 
   private comfyServerProcess: ChildProcess | null = null;
+  readonly telemetry = getTelemetry();
 
   constructor(
     public serverArgs: ServerArgs,
     public virtualEnvironment: VirtualEnvironment,
-    public appWindow: AppWindow,
-    readonly telemetry: ITelemetry
+    public appWindow: AppWindow
   ) {}
 
   get baseUrl() {

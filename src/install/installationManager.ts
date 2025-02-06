@@ -6,18 +6,17 @@ import type { AppWindow } from '../main-process/appWindow';
 import { ComfyInstallation } from '../main-process/comfyInstallation';
 import type { InstallOptions } from '../preload';
 import { CmCli } from '../services/cmCli';
-import { type HasTelemetry, ITelemetry, trackEvent } from '../services/telemetry';
-import { type DesktopConfig, useDesktopConfig } from '../store/desktopConfig';
+import { type HasTelemetry, getTelemetry, trackEvent } from '../services/telemetry';
+import { useDesktopConfig } from '../store/desktopConfig';
 import { ansiCodes, validateHardware } from '../utils';
 import type { ProcessCallbacks, VirtualEnvironment } from '../virtualEnvironment';
 import { InstallWizard } from './installWizard';
 
 /** High-level / UI control over the installation of ComfyUI server. */
 export class InstallationManager implements HasTelemetry {
-  constructor(
-    readonly appWindow: AppWindow,
-    readonly telemetry: ITelemetry
-  ) {}
+  readonly telemetry = getTelemetry();
+
+  constructor(public readonly appWindow: AppWindow) {}
 
   /**
    * Ensures that ComfyUI is installed and ready to run.
@@ -206,7 +205,7 @@ export class InstallationManager implements HasTelemetry {
     }
 
     // Creates folders and initializes ComfyUI settings
-    const installWizard = new InstallWizard(installOptions, this.telemetry);
+    const installWizard = new InstallWizard(installOptions);
     await installWizard.install();
 
     this.appWindow.maximize();
@@ -216,7 +215,7 @@ export class InstallationManager implements HasTelemetry {
       useDesktopConfig().set('migrateCustomNodesFrom', installWizard.migrationSource);
     }
 
-    const installation = new ComfyInstallation('started', this.telemetry);
+    const installation = new ComfyInstallation('started');
     InstallationManager.setReinstallHandler(installation);
     const { virtualEnvironment } = installation;
 
@@ -237,7 +236,7 @@ export class InstallationManager implements HasTelemetry {
     await virtualEnvironment.create(processCallbacks);
 
     // Migrate custom nodes
-    const customNodeMigrationError = await this.migrateCustomNodes(config, virtualEnvironment, processCallbacks);
+    const customNodeMigrationError = await this.migrateCustomNodes(virtualEnvironment, processCallbacks);
     if (customNodeMigrationError) {
       // TODO: Replace with IPC callback to handle i18n (SoC).
       new Notification({
@@ -251,13 +250,13 @@ export class InstallationManager implements HasTelemetry {
   }
 
   /** @returns `undefined` if successful, or an error `string` on failure. */
-  async migrateCustomNodes(config: DesktopConfig, virtualEnvironment: VirtualEnvironment, callbacks: ProcessCallbacks) {
-    const fromPath = config.get('migrateCustomNodesFrom');
+  async migrateCustomNodes(virtualEnvironment: VirtualEnvironment, callbacks: ProcessCallbacks) {
+    const fromPath = useDesktopConfig().get('migrateCustomNodesFrom');
     if (!fromPath) return;
 
     log.info('Migrating custom nodes from:', fromPath);
     try {
-      const cmCli = new CmCli(virtualEnvironment, virtualEnvironment.telemetry);
+      const cmCli = new CmCli(virtualEnvironment);
       await cmCli.restoreCustomNodes(fromPath, callbacks);
     } catch (error) {
       log.error('Error migrating custom nodes:', error);
@@ -265,7 +264,7 @@ export class InstallationManager implements HasTelemetry {
       return error?.toString?.() ?? 'Error migrating custom nodes.';
     } finally {
       // Always remove the flag so the user doesnt get stuck here
-      config.delete('migrateCustomNodesFrom');
+      useDesktopConfig().delete('migrateCustomNodesFrom');
     }
   }
 

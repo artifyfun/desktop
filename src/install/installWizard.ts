@@ -7,15 +7,13 @@ import { ComfyConfigManager } from '../config/comfyConfigManager';
 import { ComfyServerConfig, ModelPaths } from '../config/comfyServerConfig';
 import { comfySettings } from '../config/comfySettings';
 import { InstallOptions } from '../preload';
-import { HasTelemetry, ITelemetry, trackEvent } from '../services/telemetry';
+import { HasTelemetry, getTelemetry, trackEvent } from '../services/telemetry';
 
 export class InstallWizard implements HasTelemetry {
   public migrationItemIds: Set<string> = new Set();
+  readonly telemetry = getTelemetry();
 
-  constructor(
-    public installOptions: InstallOptions,
-    readonly telemetry: ITelemetry
-  ) {
+  constructor(public installOptions: InstallOptions) {
     this.migrationItemIds = new Set(installOptions.migrationItemIds ?? []);
   }
 

@@ -55,7 +55,7 @@ async function startApp() {
   telemetry.registerHandlers();
   telemetry.track('desktop:app_ready');
 
-  const desktopApp = new DesktopApp(appState, overrides, config);
+  const desktopApp = new DesktopApp(appState, overrides);
   await desktopApp.showLoadingPage();
   await desktopApp.start();
 }

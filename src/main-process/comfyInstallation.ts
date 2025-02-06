@@ -4,7 +4,7 @@ import { rm } from 'node:fs/promises';
 import { ComfyServerConfig } from '../config/comfyServerConfig';
 import type { DesktopInstallState } from '../main_types';
 import type { InstallValidation } from '../preload';
-import { type ITelemetry, getTelemetry } from '../services/telemetry';
+import { getTelemetry } from '../services/telemetry';
 import { useDesktopConfig } from '../store/desktopConfig';
 import { canExecute, canExecuteShellCommand, pathAccessible } from '../utils';
 import { VirtualEnvironment } from '../virtualEnvironment';
@@ -15,6 +15,8 @@ import { VirtualEnvironment } from '../virtualEnvironment';
  */
 export class ComfyInstallation {
   private _virtualEnvironment: VirtualEnvironment;
+  readonly telemetry = getTelemetry();
+
   public get virtualEnvironment(): VirtualEnvironment {
     return this._virtualEnvironment;
   }
@@ -42,9 +44,7 @@ export class ComfyInstallation {
 
   constructor(
     /** Installation state, e.g. `started`, `installed`.  See {@link DesktopSettings}. */
-    public state: DesktopInstallState,
-    /** The device type to use for the installation. */
-    public readonly telemetry: ITelemetry
+    public state: DesktopInstallState
   ) {
     this._virtualEnvironment = this.createVirtualEnvironment();
   }
@@ -63,7 +63,7 @@ export class ComfyInstallation {
     const state = config.get('installState');
     const basePath = config.get('basePath');
     if (state && basePath) {
-      return new ComfyInstallation(state, getTelemetry());
+      return new ComfyInstallation(state);
     }
   }
 

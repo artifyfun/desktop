@@ -6,9 +6,9 @@ import { comfySettings } from '@/config/comfySettings';
 
 import { DEFAULT_SERVER_ARGS, IPC_CHANNELS, ProgressStatus, ServerArgs } from '../constants';
 import { DownloadManager } from '../models/DownloadManager';
-import { HasTelemetry, ITelemetry } from '../services/telemetry';
+import { HasTelemetry, getTelemetry } from '../services/telemetry';
 import { Terminal } from '../shell/terminal';
-import { findAvailablePort, getModelsDirectory } from '../utils';
+import { findAvailablePort } from '../utils';
 import { VirtualEnvironment } from '../virtualEnvironment';
 import { AppWindow } from './appWindow';
 import type { ComfyInstallation } from './comfyInstallation';
@@ -18,10 +18,11 @@ import type { DevOverrides } from './devOverrides';
 export class ComfyDesktopApp implements HasTelemetry {
   public comfyServer: ComfyServer | null = null;
   private terminal: Terminal | null = null; // Only created after server starts.
+  readonly telemetry = getTelemetry();
+
   constructor(
     readonly installation: ComfyInstallation,
-    readonly appWindow: AppWindow,
-    readonly telemetry: ITelemetry
+    readonly appWindow: AppWindow
   ) {}
 
   public initialize(): void {
@@ -94,12 +95,12 @@ export class ComfyDesktopApp implements HasTelemetry {
       await this.appWindow.loadPage('server-start');
     }
 
-    DownloadManager.getInstance(this.appWindow, getModelsDirectory());
+    DownloadManager.getInstance(this.appWindow);
 
     const { virtualEnvironment } = this.installation;
 
     this.appWindow.sendServerStartProgress(ProgressStatus.STARTING_SERVER);
-    this.comfyServer = new ComfyServer(serverArgs, virtualEnvironment, this.appWindow, this.telemetry);
+    this.comfyServer = new ComfyServer(serverArgs, virtualEnvironment, this.appWindow);
     await this.comfyServer.start();
     this.initializeTerminal(virtualEnvironment);
   }

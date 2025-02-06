@@ -4,15 +4,13 @@ import { fileSync } from 'tmp';
 
 import { getAppResourcesPath } from '../install/resourcePaths';
 import { ProcessCallbacks, VirtualEnvironment } from '../virtualEnvironment';
-import { HasTelemetry, ITelemetry, trackEvent } from './telemetry';
+import { HasTelemetry, getTelemetry, trackEvent } from './telemetry';
 
 export class CmCli implements HasTelemetry {
   private readonly cliPath: string;
+  readonly telemetry = getTelemetry();
 
-  constructor(
-    private readonly virtualEnvironment: VirtualEnvironment,
-    readonly telemetry: ITelemetry
-  ) {
+  constructor(private readonly virtualEnvironment: VirtualEnvironment) {
     this.cliPath = path.join(getAppResourcesPath(), 'ComfyUI', 'custom_nodes', 'ComfyUI-Manager', 'cm-cli.py');
   }
 

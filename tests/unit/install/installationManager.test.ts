@@ -6,7 +6,6 @@ import { InstallationManager } from '@/install/installationManager';
 import type { AppWindow } from '@/main-process/appWindow';
 import { ComfyInstallation } from '@/main-process/comfyInstallation';
 import type { InstallValidation } from '@/preload';
-import type { ITelemetry } from '@/services/telemetry';
 import { useDesktopConfig } from '@/store/desktopConfig';
 import * as utils from '@/utils';
 
@@ -14,6 +13,10 @@ vi.mock('electron', () => ({
   ipcMain: {
     handle: vi.fn(),
     removeHandler: vi.fn(),
+    on: vi.fn(),
+  },
+  app: {
+    getPath: vi.fn().mockReturnValue('valid/path'),
   },
 }));
 
@@ -76,6 +79,13 @@ vi.mock('@/virtualEnvironment', () => {
   };
 });
 
+// Mock Telemetry
+vi.mock('@/services/telemetry', () => ({
+  getTelemetry: vi.fn().mockReturnValue({
+    track: vi.fn(),
+  }),
+}));
+
 const createMockAppWindow = () => {
   const mock = {
     send: vi.fn(),
@@ -84,13 +94,6 @@ const createMockAppWindow = () => {
     maximize: vi.fn(),
   };
   return mock as unknown as AppWindow;
-};
-
-const createMockTelemetry = () => {
-  const mock = {
-    track: vi.fn(),
-  };
-  return mock as unknown as ITelemetry;
 };
 
 describe('InstallationManager', () => {
@@ -103,7 +106,7 @@ describe('InstallationManager', () => {
     validationUpdates = [];
 
     mockAppWindow = createMockAppWindow();
-    manager = new InstallationManager(mockAppWindow, createMockTelemetry());
+    manager = new InstallationManager(mockAppWindow);
 
     vi.mocked(ComfyServerConfig.readBasePathFromConfig).mockResolvedValue({
       status: 'success',
@@ -122,7 +125,7 @@ describe('InstallationManager', () => {
     beforeEach(() => {
       // Mock the static fromConfig method to return a proper instance
       vi.spyOn(ComfyInstallation, 'fromConfig').mockImplementation(() => {
-        return new ComfyInstallation('installed', createMockTelemetry());
+        return new ComfyInstallation('installed');
       });
     });
 

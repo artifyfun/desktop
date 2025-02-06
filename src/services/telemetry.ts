@@ -12,7 +12,7 @@ import { comfySettings } from '@/config/comfySettings';
 import { IPC_CHANNELS } from '../constants';
 import { AppWindow } from '../main-process/appWindow';
 import { InstallOptions } from '../preload';
-import { DesktopConfig } from '../store/desktopConfig';
+import { useDesktopConfig } from '../store/desktopConfig';
 import { compareVersions } from '../utils';
 
 let instance: ITelemetry | null = null;
@@ -241,7 +241,9 @@ export function trackEvent<T extends HasTelemetry>(eventName: string) {
 }
 
 /** @returns Whether the user has consented to sending metrics. */
-export async function promptMetricsConsent(store: DesktopConfig, appWindow: AppWindow): Promise<boolean> {
+export async function promptMetricsConsent(appWindow: AppWindow): Promise<boolean> {
+  const store = useDesktopConfig();
+
   const consent = comfySettings.get('Comfy-Desktop.SendStatistics') ?? false;
   const consentedOn = store.get('versionConsentedMetrics');
   const isOutdated = !consentedOn || compareVersions(consentedOn, '0.4.12') < 0;

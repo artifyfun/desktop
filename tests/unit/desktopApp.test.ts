@@ -14,7 +14,6 @@ import { DevOverrides } from '@/main-process/devOverrides';
 import SentryLogging from '@/services/sentry';
 import type { ITelemetry } from '@/services/telemetry';
 import { promptMetricsConsent } from '@/services/telemetry';
-import type { DesktopConfig } from '@/store/desktopConfig';
 
 // Mock dependencies
 vi.mock('electron', () => ({
@@ -108,7 +107,6 @@ describe('DesktopApp', () => {
   let desktopApp: DesktopApp;
   let mockAppState: IAppState;
   let mockOverrides: Partial<DevOverrides>;
-  let mockConfig: DesktopConfig;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -122,16 +120,8 @@ describe('DesktopApp', () => {
       COMFY_HOST: undefined,
       COMFY_PORT: undefined,
     };
-    mockConfig = {
-      get: vi.fn(),
-      set: vi.fn(),
-      delete: vi.fn(),
-      getAsync: vi.fn(),
-      setAsync: vi.fn(),
-      permanentlyDeleteConfigFile: vi.fn(),
-    } as unknown as DesktopConfig;
 
-    desktopApp = new DesktopApp(mockAppState, mockOverrides as DevOverrides, mockConfig);
+    desktopApp = new DesktopApp(mockAppState, mockOverrides as DevOverrides);
   });
 
   describe('showLoadingPage', () => {
@@ -187,7 +177,7 @@ describe('DesktopApp', () => {
 
     it('should skip server start when using external server', async () => {
       mockOverrides = { ...mockOverrides, useExternalServer: true };
-      desktopApp = new DesktopApp(mockAppState, mockOverrides as DevOverrides, mockConfig);
+      desktopApp = new DesktopApp(mockAppState, mockOverrides as DevOverrides);
 
       await desktopApp.start();
 
@@ -217,11 +207,11 @@ describe('DesktopApp', () => {
 
     it('should initialize telemetry with user consent', async () => {
       vi.mocked(promptMetricsConsent).mockResolvedValueOnce(true);
-      vi.mocked(mockConfig.get).mockReturnValue('true');
+      vi.mocked(mockComfySettings.get).mockReturnValue('true');
 
       await desktopApp['initializeTelemetry']();
 
-      expect(promptMetricsConsent).toHaveBeenCalledWith(mockConfig, mockAppWindow);
+      expect(promptMetricsConsent).toHaveBeenCalledWith(mockAppWindow);
       expect(SentryLogging.setSentryGpuContext).toHaveBeenCalled();
       expect(desktopApp.telemetry.hasConsent).toBe(true);
       expect(desktopApp.telemetry.flush).toHaveBeenCalled();
@@ -229,12 +219,11 @@ describe('DesktopApp', () => {
 
     it('should respect user rejection of telemetry', async () => {
       vi.mocked(promptMetricsConsent).mockResolvedValueOnce(false);
-      vi.mocked(mockConfig.get).mockReturnValue('false');
       vi.mocked(mockComfySettings.get).mockReturnValue('false');
 
       await desktopApp['initializeTelemetry']();
 
-      expect(promptMetricsConsent).toHaveBeenCalledWith(mockConfig, mockAppWindow);
+      expect(promptMetricsConsent).toHaveBeenCalledWith(mockAppWindow);
       expect(desktopApp.telemetry.hasConsent).toBe(false);
       expect(desktopApp.telemetry.flush).not.toHaveBeenCalled();
     });

@@ -7,12 +7,13 @@ import { comfySettings } from '@/config/comfySettings';
 import { IPC_CHANNELS } from '@/constants';
 import type { AppWindow } from '@/main-process/appWindow';
 import { MixpanelTelemetry, promptMetricsConsent } from '@/services/telemetry';
-import type { DesktopConfig } from '@/store/desktopConfig';
+import { useDesktopConfig } from '@/store/desktopConfig';
 
 vi.mock('electron', () => ({
   app: {
     getPath: vi.fn().mockReturnValue('/mock/user/data'),
     isPackaged: true,
+    loadPage: vi.fn(),
   },
   ipcMain: {
     on: vi.fn(),
@@ -39,6 +40,17 @@ vi.mock('@/config/comfySettings', () => ({
     set: vi.fn(),
     saveSettings: vi.fn(),
   },
+}));
+
+vi.mock('@/store/desktopConfig', () => ({
+  useDesktopConfig: vi.fn().mockReturnValue({
+    get: vi.fn(),
+    set: vi.fn(),
+    delete: vi.fn(),
+    permanentlyDeleteConfigFile: vi.fn(),
+    setAsync: vi.fn(),
+    getAsync: vi.fn(),
+  } as unknown as import('@/store/desktopConfig').DesktopConfig),
 }));
 
 describe('MixpanelTelemetry', () => {
@@ -203,12 +215,19 @@ describe('MixpanelTelemetry', () => {
 });
 
 describe('promptMetricsConsent', () => {
-  let store: Pick<DesktopConfig, 'get' | 'set'>;
-  let appWindow: Pick<AppWindow, 'loadPage'>;
+  let appWindow: AppWindow;
   let mockComfySettings: {
     get: ReturnType<typeof vi.fn>;
     set: ReturnType<typeof vi.fn>;
     saveSettings: ReturnType<typeof vi.fn>;
+  };
+  let mockDesktopConfig: {
+    get: ReturnType<typeof vi.fn>;
+    set: ReturnType<typeof vi.fn>;
+    delete: ReturnType<typeof vi.fn>;
+    permanentlyDeleteConfigFile: ReturnType<typeof vi.fn>;
+    setAsync: ReturnType<typeof vi.fn>;
+    getAsync: ReturnType<typeof vi.fn>;
   };
 
   const versionBeforeUpdate = '0.4.1';
@@ -216,9 +235,18 @@ describe('promptMetricsConsent', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    store = { get: vi.fn(), set: vi.fn() };
-    appWindow = { loadPage: vi.fn() };
+    appWindow = { loadPage: vi.fn() } as unknown as AppWindow;
     mockComfySettings = vi.mocked(comfySettings);
+    const config = {
+      get: vi.fn(),
+      set: vi.fn(),
+      delete: vi.fn(),
+      permanentlyDeleteConfigFile: vi.fn(),
+      setAsync: vi.fn(),
+      getAsync: vi.fn(),
+    };
+    vi.mocked(useDesktopConfig).mockReturnValue(config as unknown as import('@/store/desktopConfig').DesktopConfig);
+    mockDesktopConfig = config;
   });
 
   const runTest = async ({
@@ -234,7 +262,7 @@ describe('promptMetricsConsent', () => {
     mockConsent?: boolean;
     promptUser?: boolean;
   }) => {
-    vi.mocked(store.get).mockReturnValue(storeValue);
+    mockDesktopConfig.get.mockReturnValue(storeValue);
     mockComfySettings.get.mockReturnValue(settingsValue);
 
     if (promptUser) {
@@ -245,8 +273,7 @@ describe('promptMetricsConsent', () => {
       });
     }
 
-    // @ts-expect-error - store is a mock and doesn't implement all of DesktopConfig
-    const result = await promptMetricsConsent(store, appWindow);
+    const result = await promptMetricsConsent(appWindow);
     expect(result).toBe(expectedResult);
 
     if (promptUser) ipcMain.removeHandler(IPC_CHANNELS.SET_METRICS_CONSENT);
@@ -260,7 +287,7 @@ describe('promptMetricsConsent', () => {
       mockConsent: true,
       promptUser: true,
     });
-    expect(store.set).toHaveBeenCalled();
+    expect(mockDesktopConfig.set).toHaveBeenCalled();
     expect(appWindow.loadPage).toHaveBeenCalledWith('metrics-consent');
     expect(ipcMain.handleOnce).toHaveBeenCalledWith(IPC_CHANNELS.SET_METRICS_CONSENT, expect.any(Function));
   });
@@ -271,8 +298,8 @@ describe('promptMetricsConsent', () => {
       settingsValue: true,
       expectedResult: true,
     });
-    expect(store.get).toHaveBeenCalledWith('versionConsentedMetrics');
-    expect(store.set).not.toHaveBeenCalled();
+    expect(mockDesktopConfig.get).toHaveBeenCalledWith('versionConsentedMetrics');
+    expect(mockDesktopConfig.set).not.toHaveBeenCalled();
     expect(appWindow.loadPage).not.toHaveBeenCalled();
     expect(ipcMain.handleOnce).not.toHaveBeenCalled();
   });
@@ -283,7 +310,7 @@ describe('promptMetricsConsent', () => {
       settingsValue: true,
       expectedResult: true,
     });
-    expect(store.set).not.toHaveBeenCalled();
+    expect(mockDesktopConfig.set).not.toHaveBeenCalled();
   });
 
   it('should return false if consent is up-to-date and metrics are disabled', async () => {
@@ -292,7 +319,7 @@ describe('promptMetricsConsent', () => {
       settingsValue: false,
       expectedResult: false,
     });
-    expect(store.set).not.toHaveBeenCalled();
+    expect(mockDesktopConfig.set).not.toHaveBeenCalled();
     expect(appWindow.loadPage).not.toHaveBeenCalled();
     expect(ipcMain.handleOnce).not.toHaveBeenCalled();
   });
@@ -303,7 +330,7 @@ describe('promptMetricsConsent', () => {
       settingsValue: false,
       expectedResult: false,
     });
-    expect(store.set).toHaveBeenCalled();
+    expect(mockDesktopConfig.set).toHaveBeenCalled();
     expect(appWindow.loadPage).not.toHaveBeenCalled();
     expect(ipcMain.handleOnce).not.toHaveBeenCalled();
   });
@@ -316,7 +343,7 @@ describe('promptMetricsConsent', () => {
       mockConsent: false,
       promptUser: true,
     });
-    expect(store.set).toHaveBeenCalled();
+    expect(mockDesktopConfig.set).toHaveBeenCalled();
     expect(appWindow.loadPage).toHaveBeenCalledWith('metrics-consent');
     expect(ipcMain.handleOnce).toHaveBeenCalledWith(IPC_CHANNELS.SET_METRICS_CONSENT, expect.any(Function));
   });
@@ -327,7 +354,7 @@ describe('promptMetricsConsent', () => {
       settingsValue: null,
       expectedResult: false,
     });
-    expect(store.set).toHaveBeenCalled();
+    expect(mockDesktopConfig.set).toHaveBeenCalled();
     expect(appWindow.loadPage).not.toHaveBeenCalled();
     expect(ipcMain.handleOnce).not.toHaveBeenCalled();
   });
@@ -340,7 +367,7 @@ describe('promptMetricsConsent', () => {
       mockConsent: true,
       promptUser: true,
     });
-    expect(store.set).toHaveBeenCalled();
+    expect(mockDesktopConfig.set).toHaveBeenCalled();
     expect(appWindow.loadPage).toHaveBeenCalledWith('metrics-consent');
     expect(ipcMain.handleOnce).toHaveBeenCalledWith(IPC_CHANNELS.SET_METRICS_CONSENT, expect.any(Function));
   });
@@ -351,7 +378,7 @@ describe('promptMetricsConsent', () => {
       settingsValue: null,
       expectedResult: false,
     });
-    expect(store.set).toHaveBeenCalled();
+    expect(mockDesktopConfig.set).toHaveBeenCalled();
     expect(appWindow.loadPage).not.toHaveBeenCalled();
     expect(ipcMain.handleOnce).not.toHaveBeenCalled();
   });
@@ -362,7 +389,7 @@ describe('promptMetricsConsent', () => {
       settingsValue: null,
       expectedResult: false,
     });
-    expect(store.set).toHaveBeenCalled();
+    expect(mockDesktopConfig.set).toHaveBeenCalled();
     expect(appWindow.loadPage).not.toHaveBeenCalled();
     expect(ipcMain.handleOnce).not.toHaveBeenCalled();
   });

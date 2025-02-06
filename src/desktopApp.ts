@@ -16,7 +16,6 @@ import type { ComfyInstallation } from './main-process/comfyInstallation';
 import { DevOverrides } from './main-process/devOverrides';
 import SentryLogging from './services/sentry';
 import { type HasTelemetry, type ITelemetry, getTelemetry, promptMetricsConsent } from './services/telemetry';
-import { DesktopConfig } from './store/desktopConfig';
 
 export class DesktopApp implements HasTelemetry {
   readonly telemetry: ITelemetry = getTelemetry();
@@ -24,8 +23,7 @@ export class DesktopApp implements HasTelemetry {
 
   constructor(
     private readonly appState: IAppState,
-    private readonly overrides: DevOverrides,
-    private readonly config: DesktopConfig
+    private readonly overrides: DevOverrides
   ) {
     this.appWindow = new AppWindow(appState);
   }
@@ -45,7 +43,7 @@ export class DesktopApp implements HasTelemetry {
 
   private async initializeTelemetry(): Promise<void> {
     await SentryLogging.setSentryGpuContext();
-    const allowMetrics = await promptMetricsConsent(this.config, this.appWindow);
+    const allowMetrics = await promptMetricsConsent(this.appWindow);
     this.telemetry.hasConsent = allowMetrics;
     if (allowMetrics) this.telemetry.flush();
   }
@@ -58,7 +56,7 @@ export class DesktopApp implements HasTelemetry {
   private async initializeInstallation(): Promise<ComfyInstallation | undefined> {
     const { appWindow } = this;
     try {
-      const installManager = new InstallationManager(appWindow, this.telemetry);
+      const installManager = new InstallationManager(appWindow);
       return await installManager.ensureInstalled();
     } catch (error) {
       // Don't force app quit if the error occurs after moving away from the start page.
@@ -72,7 +70,7 @@ export class DesktopApp implements HasTelemetry {
   }
 
   async start(): Promise<void> {
-    const { appWindow, overrides, telemetry } = this;
+    const { appWindow, overrides } = this;
 
     this.registerIpcHandlers();
 
@@ -84,7 +82,7 @@ export class DesktopApp implements HasTelemetry {
 
     try {
       // Initialize app
-      const comfyDesktopApp = new ComfyDesktopApp(installation, appWindow, telemetry);
+      const comfyDesktopApp = new ComfyDesktopApp(installation, appWindow);
       comfyDesktopApp.initialize();
 
       // Construct core launch args

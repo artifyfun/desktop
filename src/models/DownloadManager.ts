@@ -3,6 +3,8 @@ import log from 'electron-log/main';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { getModelsDirectory } from '@/utils';
+
 import { DownloadStatus, IPC_CHANNELS } from '../constants';
 import type { AppWindow } from '../main-process/appWindow';
 
@@ -30,11 +32,9 @@ export class DownloadManager {
   private static instance: DownloadManager;
   private readonly downloads: Map<string, Download>;
   private readonly mainWindow: AppWindow;
-  private readonly modelsDirectory: string;
-  private constructor(mainWindow: AppWindow, modelsDirectory: string) {
+  private constructor(mainWindow: AppWindow) {
     this.downloads = new Map();
     this.mainWindow = mainWindow;
-    this.modelsDirectory = modelsDirectory;
 
     session.defaultSession.on('will-download', (event, item) => {
       const url = item.getURLChain()[0]; // Get the original URL in case of redirects.
@@ -115,7 +115,7 @@ export class DownloadManager {
   startDownload(url: string, savePath: string, filename: string): boolean {
     const localSavePath = this.getLocalSavePath(filename, savePath);
     if (!this.isPathInModelsDirectory(localSavePath)) {
-      log.error(`Save path ${localSavePath} is not in models directory ${this.modelsDirectory}`);
+      log.error(`Save path ${localSavePath} is not in models directory ${getModelsDirectory()}`);
       this.reportProgress({
         url,
         savePath,
@@ -198,7 +198,7 @@ export class DownloadManager {
   deleteModel(filename: string, savePath: string): boolean {
     const localSavePath = this.getLocalSavePath(filename, savePath);
     if (!this.isPathInModelsDirectory(localSavePath)) {
-      log.error(`Save path ${localSavePath} is not in models directory ${this.modelsDirectory}`);
+      log.error(`Save path ${localSavePath} is not in models directory ${getModelsDirectory()}`);
       return false;
     }
     const tempPath = this.getTempPath(filename, savePath);
@@ -252,7 +252,7 @@ export class DownloadManager {
   }
 
   private getTempPath(filename: string, savePath: string): string {
-    return path.join(this.modelsDirectory, savePath, `Unconfirmed ${filename}.tmp`);
+    return path.join(getModelsDirectory(), savePath, `Unconfirmed ${filename}.tmp`);
   }
 
   // Only allow .safetensors files to be downloaded.
@@ -276,12 +276,12 @@ export class DownloadManager {
   }
 
   private getLocalSavePath(filename: string, savePath: string): string {
-    return path.join(this.modelsDirectory, savePath, filename);
+    return path.join(getModelsDirectory(), savePath, filename);
   }
 
   private isPathInModelsDirectory(filePath: string): boolean {
     const absoluteFilePath = path.resolve(filePath);
-    const absoluteModelsDir = path.resolve(this.modelsDirectory);
+    const absoluteModelsDir = path.resolve(getModelsDirectory());
     return absoluteFilePath.startsWith(absoluteModelsDir);
   }
 
@@ -311,9 +311,9 @@ export class DownloadManager {
     });
   }
 
-  public static getInstance(mainWindow: AppWindow, modelsDirectory: string): DownloadManager {
+  public static getInstance(mainWindow: AppWindow): DownloadManager {
     if (!DownloadManager.instance) {
-      DownloadManager.instance = new DownloadManager(mainWindow, modelsDirectory);
+      DownloadManager.instance = new DownloadManager(mainWindow);
       DownloadManager.instance.registerIpcHandlers();
     }
     return DownloadManager.instance;
