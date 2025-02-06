@@ -84,6 +84,9 @@ vi.mock('@/services/telemetry', () => ({
   getTelemetry: vi.fn().mockReturnValue({
     track: vi.fn(),
   }),
+  trackEvent: () => (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
+    return descriptor;
+  },
 }));
 
 const createMockAppWindow = () => {
