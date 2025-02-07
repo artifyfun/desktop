@@ -53,7 +53,8 @@ async function startApp() {
     });
   }
 
-  await comfySettings.loadSettings();
+  const isNewUser = config.get('basePath') === undefined;
+  if (!isNewUser) await comfySettings.loadSettings();
 
   telemetry.registerHandlers();
   telemetry.track('desktop:app_ready');
