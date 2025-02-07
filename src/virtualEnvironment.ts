@@ -203,11 +203,12 @@ export class VirtualEnvironment implements HasTelemetry {
   }
 
   private async createEnvironment(callbacks?: ProcessCallbacks): Promise<void> {
+    const device = useDesktopConfig().get('selectedDevice')!;
     this.telemetry.track(`install_flow:virtual_environment_create_start`, {
       python_version: this.pythonVersion,
-      device: useDesktopConfig().get('selectedDevice')!,
+      device,
     });
-    if (useDesktopConfig().get('selectedDevice') === 'unsupported') {
+    if (device === 'unsupported') {
       log.info('User elected to manually configure their environment.  Skipping python configuration.');
       this.telemetry.track(`install_flow:virtual_environment_create_end`, {
         reason: 'unsupported_device',

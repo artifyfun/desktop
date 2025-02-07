@@ -259,7 +259,7 @@ export async function promptMetricsConsent(appWindow: AppWindow): Promise<boolea
     const newConsent = await consentPromise;
     if (newConsent !== consent) {
       comfySettings.set('Comfy-Desktop.SendStatistics', newConsent);
-      comfySettings.saveSettings();
+      await comfySettings.saveSettings();
     }
 
     return newConsent;
