@@ -30,6 +30,7 @@ export class DesktopConfig {
 
   /** @inheritdoc {@link ElectronStore.set} */
   set<Key extends keyof DesktopSettings>(key: Key, value: Required<DesktopSettings>[Key]) {
+    log.verbose('Saving config:', key, '->', value);
     return value === undefined ? this.#store.delete(key) : this.#store.set(key, value);
   }
 
