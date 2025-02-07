@@ -4,6 +4,7 @@ import { app, shell } from 'electron';
 import { LevelOption } from 'electron-log';
 import log from 'electron-log/main';
 
+import { comfySettings } from './config/comfySettings';
 import { DesktopApp } from './desktopApp';
 import { AppState } from './main-process/appState';
 import { DevOverrides } from './main-process/devOverrides';
@@ -51,6 +52,8 @@ async function startApp() {
       exitCode: 20,
     });
   }
+
+  await comfySettings.loadSettings();
 
   telemetry.registerHandlers();
   telemetry.track('desktop:app_ready');

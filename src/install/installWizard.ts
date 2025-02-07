@@ -26,7 +26,7 @@ export class InstallWizard implements HasTelemetry {
     // Setup the ComfyUI folder structure.
     ComfyConfigManager.createComfyDirectories(useDesktopConfig().get('basePath')!);
     this.initializeUserFiles();
-    this.initializeSettings();
+    await this.initializeSettings();
     await this.initializeModelPaths();
   }
 
@@ -45,9 +45,9 @@ export class InstallWizard implements HasTelemetry {
   }
 
   /**
-   * Setup comfy.settings.json file
+   * Persist install options to comfy.settings.json
    */
-  public initializeSettings() {
+  public async initializeSettings() {
     const settings = {
       'Comfy-Desktop.AutoUpdate': this.installOptions.autoUpdate,
       'Comfy-Desktop.SendStatistics': this.installOptions.allowMetrics,
@@ -64,7 +64,7 @@ export class InstallWizard implements HasTelemetry {
       comfySettings.set('Comfy.Server.LaunchArgs', launchArgs);
     }
 
-    comfySettings.saveSettings();
+    await comfySettings.saveSettings();
   }
 
   /**
