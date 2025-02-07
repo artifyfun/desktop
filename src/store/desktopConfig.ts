@@ -25,6 +25,7 @@ export class DesktopConfig {
 
   /** @inheritdoc {@link ElectronStore.get} */
   get<Key extends keyof DesktopSettings>(key: Key, defaultValue?: Required<DesktopSettings>[Key]) {
+    log.verbose('Getting config:', key);
     return defaultValue === undefined ? this.#store.get(key) : this.#store.get(key, defaultValue);
   }
 
