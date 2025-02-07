@@ -139,7 +139,7 @@ export class DesktopApp implements HasTelemetry {
    * @param options - The options for the error.
    */
   static fatalError({ message, error, title, logMessage, exitCode }: FatalErrorOptions): never {
-    const _error = error instanceof Error ? error : new Error(message);
+    const _error = error ?? new Error(message);
     log.error(logMessage ?? message, _error);
     if (title && message) dialog.showErrorBox(title, message);
 
