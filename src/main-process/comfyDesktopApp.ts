@@ -3,6 +3,7 @@ import { app, ipcMain } from 'electron';
 import log from 'electron-log/main';
 
 import { comfySettings } from '@/config/comfySettings';
+import { useDesktopConfig } from '@/store/desktopConfig';
 
 import { DEFAULT_SERVER_ARGS, IPC_CHANNELS, ProgressStatus, ServerArgs } from '../constants';
 import { DownloadManager } from '../models/DownloadManager';
@@ -106,7 +107,7 @@ export class ComfyDesktopApp implements HasTelemetry {
   }
 
   private initializeTerminal(virtualEnvironment: VirtualEnvironment) {
-    this.terminal = new Terminal(this.appWindow, virtualEnvironment.uvPath);
+    this.terminal = new Terminal(this.appWindow, useDesktopConfig().get('basePath')!, virtualEnvironment.uvPath);
     this.terminal.write(virtualEnvironment.activateEnvironmentCommand());
 
     ipcMain.handle(IPC_CHANNELS.TERMINAL_WRITE, (_event, command: string) => {
