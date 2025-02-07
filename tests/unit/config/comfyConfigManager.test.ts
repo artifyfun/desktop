@@ -25,6 +25,8 @@ vi.mock('@/store/desktopConfig', () => ({
   }),
 }));
 
+const mockBasePath = path.normalize('/fake/path/ComfyUI');
+
 describe('ComfyConfigManager', () => {
   // Reset all mocks before each test
   beforeEach(() => {
@@ -38,7 +40,7 @@ describe('ComfyConfigManager', () => {
   describe('setUpComfyUI', () => {
     it('should allow existing directory when it contains ComfyUI structure', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
-      expect(() => ComfyConfigManager.createComfyDirectories()).not.toThrow();
+      expect(() => ComfyConfigManager.createComfyDirectories(mockBasePath)).not.toThrow();
     });
 
     it('should create ComfyUI subdirectory when it is missing', () => {
@@ -49,7 +51,7 @@ describe('ComfyConfigManager', () => {
         return true;
       });
 
-      ComfyConfigManager.createComfyDirectories();
+      ComfyConfigManager.createComfyDirectories(mockBasePath);
     });
   });
 
@@ -90,7 +92,7 @@ describe('ComfyConfigManager', () => {
     it('should create all necessary directories when none exist', () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);
 
-      ComfyConfigManager.createComfyDirectories();
+      ComfyConfigManager.createComfyDirectories(mockBasePath);
 
       // Verify each required directory was created
       expect(fs.mkdirSync).toHaveBeenCalledWith(path.normalize('/fake/path/ComfyUI/models'), { recursive: true });
@@ -106,7 +108,7 @@ describe('ComfyConfigManager', () => {
       });
 
       const log = await import('electron-log/main');
-      ComfyConfigManager.createComfyDirectories();
+      ComfyConfigManager.createComfyDirectories(mockBasePath);
 
       expect(fs.mkdirSync).toHaveBeenCalled();
       expect(vi.mocked(log.default.error)).toHaveBeenCalledWith(expect.stringContaining('Permission denied'));

@@ -24,7 +24,7 @@ export class InstallWizard implements HasTelemetry {
   @trackEvent('install_flow:create_comfy_directories')
   public async install() {
     // Setup the ComfyUI folder structure.
-    ComfyConfigManager.createComfyDirectories();
+    ComfyConfigManager.createComfyDirectories(useDesktopConfig().get('basePath')!);
     this.initializeUserFiles();
     this.initializeSettings();
     await this.initializeModelPaths();
