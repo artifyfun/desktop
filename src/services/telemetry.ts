@@ -92,7 +92,7 @@ export class MixpanelTelemetry implements ITelemetry {
       $os: os.platform(),
     };
 
-    log.debug(`Event:[${eventName}] ${JSON.stringify(properties)}`);
+    log.debug(`Event:[${eventName}]`, properties);
     if (!this.hasConsent) {
       log.debug('Queueing previous event');
       this.queue.push({
