@@ -1,4 +1,4 @@
-import { type ElectronApplication, test as baseTest } from '@playwright/test';
+import { type ElectronApplication, type TestInfo, test as baseTest } from '@playwright/test';
 import electronPath from 'electron';
 import { _electron as electron } from 'playwright';
 
@@ -9,9 +9,9 @@ const isCI = !!process.env.CI;
 
 // Extend the base test
 export const test = baseTest.extend<{ app: TestApp }>({
-  app: async ({}, use) => {
+  app: async ({}, use, testInfo) => {
     // Launch Electron app.
-    await using app = await TestApp.create();
+    await using app = await TestApp.create(testInfo);
     await use(app);
   },
 });
@@ -30,12 +30,15 @@ async function localTestQoL(app: ElectronApplication) {
  * Base class for desktop e2e tests.
  */
 export class TestApp implements AsyncDisposable {
-  protected constructor(readonly app: ElectronApplication) {}
+  protected constructor(
+    readonly app: ElectronApplication,
+    readonly testInfo: TestInfo
+  ) {}
 
   /** Async static factory */
-  static async create() {
+  static async create(testInfo: TestInfo) {
     const app = await TestApp.launchElectron();
-    return new TestApp(app);
+    return new TestApp(app, testInfo);
   }
 
   /** Get the first window that the app opens.  Wait if necessary. */
@@ -52,6 +55,13 @@ export class TestApp implements AsyncDisposable {
     });
     await localTestQoL(app);
     return app;
+  }
+
+  /** Attaches a screenshot to the test results. Prefer toHaveScreenshot() in tests. */
+  async attachScreenshot(name: string) {
+    const window = await this.firstWindow();
+    const screenshot = await window.screenshot();
+    await this.testInfo.attach(name, { body: screenshot, contentType: 'image/png' });
   }
 
   /** Dispose: close the app. */

@@ -13,7 +13,7 @@ async function attachIfExists(testInfo: TestInfo, path: string) {
 export const test = baseTest.extend<{ autoCleaningApp: AutoCleaningTestApp }>({
   autoCleaningApp: async ({}, use, testInfo) => {
     // Launch Electron app.
-    await using app = await AutoCleaningTestApp.create();
+    await using app = await AutoCleaningTestApp.create(testInfo);
     await use(app);
 
     // After test
@@ -29,9 +29,9 @@ export const test = baseTest.extend<{ autoCleaningApp: AutoCleaningTestApp }>({
 export class AutoCleaningTestApp extends TestApp implements AsyncDisposable {
   readonly testEnvironment: TestEnvironment = new TestEnvironment();
 
-  static async create() {
+  static async create(testInfo: TestInfo) {
     const app = await TestApp.launchElectron();
-    return new AutoCleaningTestApp(app);
+    return new AutoCleaningTestApp(app, testInfo);
   }
 
   async [Symbol.asyncDispose](): Promise<void> {

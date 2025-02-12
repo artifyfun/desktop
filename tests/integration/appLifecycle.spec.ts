@@ -7,14 +7,14 @@ const APP_START_TIMEOUT = process.env.CI ? 30_000 : 5000;
 test.describe('App Lifecycle', () => {
   test('does all app startup things from previous test', async ({ autoCleaningApp }) => {
     const window = await autoCleaningApp.firstWindow();
-    await window.screenshot({ path: 'screenshot-app-start.png' });
+    await autoCleaningApp.attachScreenshot('screenshot-app-start');
 
     const getStartedButton = window.getByText('Get Started');
 
     await expect(getStartedButton).toBeVisible({ timeout: APP_START_TIMEOUT });
     await expect(getStartedButton).toBeEnabled();
 
-    await window.screenshot({ path: 'screenshot-load.png' });
+    await autoCleaningApp.attachScreenshot('screenshot-load');
 
     await getStartedButton.click();
 
@@ -30,17 +30,17 @@ test.describe('App Lifecycle', () => {
     await clickEnabledButton(nextButton);
 
     await expect(window.getByText('Choose Installation Location')).toBeVisible();
-    await window.screenshot({ path: 'screenshot-get-started.png' });
+    await autoCleaningApp.attachScreenshot('screenshot-get-started');
 
     await clickEnabledButton(nextButton);
 
     await expect(window.getByText('Migrate from Existing Installation')).toBeVisible();
-    await window.screenshot({ path: 'screenshot-migrate.png' });
+    await autoCleaningApp.attachScreenshot('screenshot-migrate');
 
     await clickEnabledButton(nextButton);
 
     await expect(window.getByText('Desktop App Settings')).toBeVisible();
-    await window.screenshot({ path: 'screenshot-install.png' });
+    await autoCleaningApp.attachScreenshot('screenshot-install');
 
     /** Ensure a button is enabled, then click it. */
     async function clickEnabledButton(button: Locator) {
