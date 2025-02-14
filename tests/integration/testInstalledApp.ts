@@ -19,13 +19,13 @@ export class TestInstalledApp {
     }).toPass({ timeout, intervals: [500] });
   }
 
-  /** Creates a new blank workflow using the button in the tabs */
+  /** Creates a new blank workflow */
   async createBlankWorkflow() {
     const newWorkflowButton = this.window.getByLabel('Create a new blank workflow');
     await newWorkflowButton.click();
   }
 
-  /** Saves the current workflow using keyboard shortcuts. */
+  /** Saves the current workflow */
   async saveWorkflow() {
     await this.window.keyboard.press('Control+S');
     await this.window.waitForSelector('#global-prompt', { state: 'visible' });
