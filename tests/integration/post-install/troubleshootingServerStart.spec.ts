@@ -1,5 +1,10 @@
 import { expect, test } from '../testExtensions';
 
+// - Causes server start to fail
+// - Accesses troubleshooting page
+// - Verifies screenshot
+// - Only works on CPU runner
+
 test.describe('Troubleshooting - cannot start server', () => {
   test.beforeEach(async ({ app }) => {
     await app.testEnvironment.breakServerStart();
