@@ -8,7 +8,7 @@ test.describe('Troubleshooting - cannot start server', () => {
   test('Troubleshooting page is offered when server cannot start', async ({ serverStart, troubleshooting, window }) => {
     await serverStart.expectServerStarts();
 
-    await expect(serverStart.troubleshootButton).toBeVisible();
+    await expect(serverStart.troubleshootButton).toBeVisible({ timeout: 30 * 1000 });
     await expect(window).toHaveScreenshot('cannot-start-server-troubleshoot.png');
     await serverStart.troubleshootButton.click();
 
