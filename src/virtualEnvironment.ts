@@ -506,7 +506,7 @@ export class VirtualEnvironment implements HasTelemetry {
     }
   }
 
-  async installComfyUIManagerRequirements(callbacks?: ProcessCallbacks): Promise<void> {
+  private async installComfyUIManagerRequirements(callbacks?: ProcessCallbacks): Promise<void> {
     log.info(`Installing ComfyUIManager requirements from ${this.comfyUIManagerRequirementsPath}`);
     const installCmd = getPipInstallArgs({
       requirementsFile: this.comfyUIManagerRequirementsPath,
@@ -531,7 +531,7 @@ export class VirtualEnvironment implements HasTelemetry {
    * `'manager-upgrade'` if `uv` and `toml` are missing,
    * or `'error'` when any other combination of packages are missing.
    */
-  async hasRequirements(): Promise<'OK' | 'error' | 'manager-upgrade'> {
+  async hasRequirements() {
     const checkRequirements = async (requirementsPath: string) => {
       const args = ['pip', 'install', '--dry-run', '-r', requirementsPath];
       log.info(`Running direct process command: ${args.join(' ')}`);
@@ -548,32 +548,16 @@ export class VirtualEnvironment implements HasTelemetry {
         throw new Error(`Failed to get packages: Exit code ${result.exitCode}, signal ${result.signal}`);
       if (!output) throw new Error('Failed to get packages: uv output was empty');
 
-      return output;
-    };
-
-    const hasAllPackages = (output: string) => {
       const venvOk = output.search(/\bWould make no changes\s+$/) !== -1;
       if (!venvOk) log.warn(output);
+
       return venvOk;
     };
 
-    // Manager upgrade in 0.4.18
-    const isManagerUpgrade = (output: string) => {
-      return output.search(/\bWould install 2 packages(\s+\+ (toml|uv)==[\d.]+){2}\s*$/) !== -1;
-    };
+    const coreOk = await checkRequirements(this.comfyUIRequirementsPath);
+    const managerOk = await checkRequirements(this.comfyUIManagerRequirementsPath);
 
-    const coreOutput = await checkRequirements(this.comfyUIRequirementsPath);
-    const managerOutput = await checkRequirements(this.comfyUIManagerRequirementsPath);
-
-    const coreOk = hasAllPackages(coreOutput);
-    const managerOk = hasAllPackages(managerOutput);
-
-    if (coreOk && isManagerUpgrade(managerOutput)) {
-      log.info('ComfyUI-Manager requires toml and uv. Installing.');
-      return 'manager-upgrade';
-    }
-
-    return coreOk && managerOk ? 'OK' : 'error';
+    return coreOk && managerOk;
   }
 
   async clearUvCache(onData: ((data: string) => void) | undefined): Promise<boolean> {

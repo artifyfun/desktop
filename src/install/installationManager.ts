@@ -6,7 +6,7 @@ import type { AppWindow } from '../main-process/appWindow';
 import { ComfyInstallation } from '../main-process/comfyInstallation';
 import type { InstallOptions, InstallValidation } from '../preload';
 import { CmCli } from '../services/cmCli';
-import { type HasTelemetry, ITelemetry, trackEvent } from '../services/telemetry';
+import { type HasTelemetry, ITelemetry } from '../services/telemetry';
 import { type DesktopConfig, useDesktopConfig } from '../store/desktopConfig';
 import { canExecuteShellCommand, validateHardware } from '../utils';
 import type { ProcessCallbacks, VirtualEnvironment } from '../virtualEnvironment';
@@ -56,9 +56,6 @@ export class InstallationManager implements HasTelemetry {
 
     // Convert from old format
     if (state === 'upgraded') installation.upgradeConfig();
-
-    // Install updated manager requirements
-    if (installation.needsManagerPackageUpdate) await this.updateManagerPackages(installation);
 
     // Resolve issues and re-run validation
     if (installation.hasIssues) {
@@ -270,20 +267,6 @@ export class InstallationManager implements HasTelemetry {
 
     log.verbose('Resolution complete:', installation.validation);
     return isValid;
-  }
-
-  @trackEvent('installation_manager:manager_packages_update')
-  private async updateManagerPackages(installation: ComfyInstallation) {
-    const sendLogIpc = (data: string) => {
-      log.info(data);
-      this.appWindow.send(IPC_CHANNELS.LOG_MESSAGE, data);
-    };
-    await this.appWindow.loadPage('desktop-update');
-    await installation.virtualEnvironment.installComfyUIManagerRequirements({
-      onStdout: sendLogIpc,
-      onStderr: sendLogIpc,
-    });
-    await installation.validate();
   }
 
   static setReinstallHandler(installation: ComfyInstallation) {

@@ -31,5 +31,4 @@ export type Page =
   | 'metrics-consent'
   | 'server-start'
   | ''
-  | 'maintenance'
-  | 'desktop-update';
+  | 'maintenance';
