@@ -57,6 +57,13 @@ export class InstallationManager implements HasTelemetry {
     // Convert from old format
     if (state === 'upgraded') installation.upgradeConfig();
 
+    // Install missing requirements
+    if (installation.validation.pythonPackages === 'error') {
+      log.error('Detected missing requirements. Trying to install missing requirements.');
+      await installation.virtualEnvironment.installComfyUIRequirements();
+      await installation.virtualEnvironment.installComfyUIManagerRequirements();
+      await installation.validate();
+    }
     // Resolve issues and re-run validation
     if (installation.hasIssues) {
       while (!(await this.resolveIssues(installation, troubleshooting))) {
