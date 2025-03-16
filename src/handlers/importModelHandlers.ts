@@ -1,8 +1,8 @@
 import { ipcMain } from 'electron';
 import log from 'electron-log/main';
+import mv from 'mv';
 import { existsSync } from 'node:fs';
 import { copyFile, mkdir } from 'node:fs/promises';
-import mv from 'mv';
 import path from 'node:path';
 
 import { ComfyServerConfig } from '@/config/comfyServerConfig';
@@ -48,12 +48,14 @@ export function registerImportModelHandlers() {
 
         log.info(mode, filePath, '->', destinationPath);
 
-        await (mode === 'move' ? new Promise((resolve, reject) => {
-            mv(filePath, destinationPath, (err) => {
-              if (err) reject(err instanceof Error ? err : new Error(String(err)));
-              else resolve(true);
-            });
-          }) : copyFile(filePath, destinationPath));
+        await (mode === 'move'
+          ? new Promise((resolve, reject) => {
+              mv(filePath, destinationPath, (err) => {
+                if (err) reject(err instanceof Error ? err : new Error(String(err)));
+                else resolve(true);
+              });
+            })
+          : copyFile(filePath, destinationPath));
       } catch (error) {
         console.error(error);
         throw error;
