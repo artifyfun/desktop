@@ -29,12 +29,14 @@ export function registerImportModelHandlers() {
 
         log.info(mode, filePath, '->', destinationPath);
 
-        await (mode == 'move' ? new Promise((resolve, reject) => {
-            mv(filePath, destinationPath, (err) => {
-              if (err) reject(err instanceof Error ? err : new Error(String(err)));
-              else resolve(true);
-            });
-          }) : copyFile(filePath, destinationPath));
+        await (mode == 'move'
+          ? new Promise((resolve, reject) => {
+              mv(filePath, destinationPath, (err) => {
+                if (err) reject(err instanceof Error ? err : new Error(String(err)));
+                else resolve(true);
+              });
+            })
+          : copyFile(filePath, destinationPath));
       } catch (error) {
         console.error(error);
         throw error;
