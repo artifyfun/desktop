@@ -20,6 +20,14 @@ jobs:
       - name: Github checkout
         uses: actions/checkout@v4
 
+      - name: Checkout ComfyUI-private repository
+        uses: actions/checkout@v4
+        with:
+          repository: Comfy-Org/ComfyUI-private
+          path: assets/ComfyUI
+          token: ${{ secrets.DESKTOP_PRIVATE_KEY }}
+          clean: true
+
       - name: Build
         uses: ./.github/actions/build/todesktop
         env:
