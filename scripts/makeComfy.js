@@ -2,7 +2,7 @@ import { execSync } from 'node:child_process';
 
 import pkg from './getPackage.js';
 
-const comfyRepo = 'https://github.com/comfyanonymous/ComfyUI';
+const comfyRepo = 'https://github.com/Comfy-Org/ComfyUI-private';
 const managerRepo = 'https://github.com/ltdrdata/ComfyUI-Manager';
 
 /** Suppress warning about detached head */
