@@ -25,7 +25,7 @@ jobs:
         with:
           repository: Comfy-Org/ComfyUI-private
           path: assets/ComfyUI
-          token: ${{ secrets.DESKTOP_PRIVATE_KEY }}
+          token: ${{ secrets.GH_TOKEN_COMFY_PR_BOT }}
           clean: true
 
       - name: Build
