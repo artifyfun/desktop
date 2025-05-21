@@ -10,7 +10,10 @@
   "packageManager": "yarn@4.5.0",
   "type": "module",
   "config": {
-    "frontendVersion": "1.19.9",
+    "frontend": {
+      "version": "1.20.3",
+      "optionalBranch": "c/subgraph"
+    },
     "comfyUI": {
       "version": "0.3.34",
       "optionalBranch": ""
