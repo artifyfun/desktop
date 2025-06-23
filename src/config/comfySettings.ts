@@ -13,7 +13,12 @@ export const DEFAULT_SETTINGS: ComfySettingsData = {
   'Comfy-Desktop.UV.PythonInstallMirror': '',
   'Comfy-Desktop.UV.PypiInstallMirror': '',
   'Comfy-Desktop.UV.TorchInstallMirror': '',
+  'Comfy.Release.Version': '',
+  'Comfy.Release.Status': 'skipped',
+  'Comfy.Release.Timestamp': 0,
 } as const;
+
+export type ReleaseStatus = 'skipped' | 'changelog seen' | "what's new seen";
 
 export interface ComfySettingsData {
   'Comfy-Desktop.AutoUpdate': boolean;
@@ -26,6 +31,9 @@ export interface ComfySettingsData {
   'Comfy-Desktop.UV.PythonInstallMirror': string;
   'Comfy-Desktop.UV.PypiInstallMirror': string;
   'Comfy-Desktop.UV.TorchInstallMirror': string;
+  'Comfy.Release.Version': string;
+  'Comfy.Release.Status': ReleaseStatus;
+  'Comfy.Release.Timestamp': number;
   [key: string]: unknown;
 }
 

@@ -90,6 +90,9 @@ describe('ComfySettings', () => {
         'Comfy-Desktop.UV.PythonInstallMirror': '',
         'Comfy-Desktop.UV.PypiInstallMirror': '',
         'Comfy-Desktop.UV.TorchInstallMirror': '',
+        'Comfy.Release.Version': '1.0.0',
+        'Comfy.Release.Status': 'skipped',
+        'Comfy.Release.Timestamp': Date.now(),
       };
 
       vi.mocked(fsPromises.access).mockResolvedValue(undefined);
