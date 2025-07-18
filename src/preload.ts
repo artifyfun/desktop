@@ -453,18 +453,67 @@ const electronAPI = {
     resetVenv: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.UV_RESET_VENV),
   },
 
-  /**
-   * Manually check for application updates.
-   * @param options Optional option args, see todesktop docs.
-   * @returns A promise that resolves to update availability and version.
-   */
-  checkForUpdates: (options?: object): Promise<{ isUpdateAvailable: boolean; version?: string }> =>
-    ipcRenderer.invoke(IPC_CHANNELS.CHECK_FOR_UPDATES, options),
+  ArtifyLab: {
+    selectFile: (data: Record<string, unknown>) => ipcRenderer.invoke('artify-selectFile', data),
+    getConfig: (data: Record<string, unknown>) => ipcRenderer.invoke('artify-getConfig', data),
+    loadComfyUI: (data: Record<string, unknown>) => ipcRenderer.invoke('artify-loadComfyUI', data),
+    loadArtifyLab: (data: Record<string, unknown>) => ipcRenderer.invoke('artify-loadArtifyLab', data),
+    getAppInfo: (data: Record<string, unknown>) => ipcRenderer.invoke('artify-getAppInfo'),
+    /**
+     * 扫描文件夹下所有文件
+     * @param folderPath 要扫描的文件夹路径
+     * @returns 文件信息数组，包含完整路径、文件名、后缀等信息
+     */
+    scanFolder: (folderPath: string): Promise<Array<{
+      fullPath: string;
+      fileName: string;
+      extension: string;
+      size: number;
+      isDirectory: boolean;
+      lastModified: Date;
+      relativePath: string;
+    }>> => ipcRenderer.invoke('artify-scanFolder', folderPath),
+    /**
+     * 打开output目录
+     */
+    openOutputFolder: (): Promise<{ success: boolean; path?: string; error?: string }> =>
+      ipcRenderer.invoke('artify-openOutputFolder'),
+    /**
+     * 获取output目录路径
+     */
+    getOutputPath: (): Promise<{ success: boolean; path?: string; error?: string }> =>
+      ipcRenderer.invoke('artify-getOutputPath'),
+    /**
+     * 打开根目录下的指定文件夹
+     * @param folderName 要打开的文件夹名称（如 'output', 'models' 等）
+     * @returns 打开结果，包含成功状态、路径、打开的文件夹名称等信息
+     */
+    openRootFolder: (folderName: string): Promise<{ 
+      success: boolean; 
+      path?: string; 
+      error?: string; 
+      openedFolder?: string; 
+      message?: string; 
+    }> => ipcRenderer.invoke('artify-openRootFolder', folderName),
+  },
 
   /**
-   * Restarts and installs updates using todesktop.autoUpdater.restartAndInstall().
+   * Manually check for application updates.
+   * @returns A promise that resolves to update availability and version.
    */
-  // "Fire and forget", code on desktop side will catch errors pre-restart
+  checkForUpdates: (): Promise<{ isUpdateAvailable: boolean; version?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CHECK_FOR_UPDATES),
+
+  /**
+   * Download the available update.
+   * @returns A promise that resolves when download is complete.
+   */
+  downloadUpdate: (): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DOWNLOAD_UPDATE),
+
+  /**
+   * Restarts and installs updates using electron-updater.
+   */
   restartAndInstall: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.RESTART_AND_INSTALL),
 } as const;
 

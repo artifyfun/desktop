@@ -1,6 +1,9 @@
 import { app, dialog, ipcMain } from 'electron';
 import log from 'electron-log/main';
 
+import artifyLab from './artifylab';
+import { registerArtifyHandlers } from './artifylab/handlers';
+
 import { ProgressStatus } from './constants';
 import { IPC_CHANNELS } from './constants';
 import { registerAppHandlers } from './handlers/AppHandlers';
@@ -101,6 +104,10 @@ export class DesktopApp implements HasTelemetry {
       // Start server
       if (!overrides.useExternalServer && !comfyDesktopApp.serverRunning) {
         try {
+          await artifyLab.startServer()
+          artifyLab.injectHtml()
+          artifyLab.setAppWindow(appWindow)
+          artifyLab.setServerArgs(serverArgs)
           await comfyDesktopApp.startComfyServer(serverArgs);
         } catch (error) {
           log.error('Unhandled exception during server start', error);
@@ -110,7 +117,8 @@ export class DesktopApp implements HasTelemetry {
         }
       }
       appWindow.sendServerStartProgress(ProgressStatus.READY);
-      await appWindow.loadComfyUI(serverArgs);
+      // await appWindow.loadComfyUI(serverArgs);
+      await appWindow.loadArtifyLab(serverArgs);
 
       // App start complete
       appState.emitLoaded();
@@ -137,6 +145,7 @@ export class DesktopApp implements HasTelemetry {
       registerNetworkHandlers();
       registerAppInfoHandlers();
       registerAppHandlers();
+      registerArtifyHandlers();
       registerGpuHandlers();
 
       ipcMain.handle(IPC_CHANNELS.START_TROUBLESHOOTING, async () => await this.showTroubleshootingPage());

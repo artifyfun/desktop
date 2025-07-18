@@ -1,4 +1,3 @@
-import todesktop from '@todesktop/runtime';
 import { app, ipcMain } from 'electron';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
@@ -22,8 +21,6 @@ describe('AppHandlers', () => {
     const handleChannels = [
       IPC_CHANNELS.QUIT,
       IPC_CHANNELS.RESTART_APP,
-      IPC_CHANNELS.CHECK_FOR_UPDATES,
-      IPC_CHANNELS.RESTART_AND_INSTALL,
     ];
     test.each(handleChannels)('should register handler for %s', (ch) => {
       expect(ipcMain.handle).toHaveBeenCalledWith(ch, expect.any(Function));
@@ -44,52 +41,6 @@ describe('AppHandlers', () => {
     expect(handlerFn).toThrow(quitMessage);
   });
 
-  describe('checkForUpdates handler', () => {
-    let handler: any;
-    beforeEach(() => {
-      handler = getHandler(IPC_CHANNELS.CHECK_FOR_UPDATES);
-    });
-
-    test('throws error when updater is unavailable', async () => {
-      todesktop.autoUpdater = undefined;
-      await expect(handler()).rejects.toThrow('todesktop.autoUpdater is not available');
-    });
-
-    test('returns update info when available', async () => {
-      const mockUpdater = {
-        checkForUpdates: vi.fn().mockResolvedValue({
-          updateInfo: { version: '1.2.3', releaseDate: '2020-01-01T00:00:00.000Z' },
-        }),
-      };
-      todesktop.autoUpdater = mockUpdater as any;
-      const result = await handler();
-      expect(mockUpdater.checkForUpdates).toHaveBeenCalled();
-      expect(result).toEqual({ isUpdateAvailable: true, version: '1.2.3' });
-    });
-
-    test('returns false when no update available', async () => {
-      const mockUpdater = { checkForUpdates: vi.fn().mockResolvedValue({}) };
-      todesktop.autoUpdater = mockUpdater as any;
-      await expect(handler()).resolves.toEqual({ isUpdateAvailable: false, version: undefined });
-    });
-  });
-
-  describe('restartAndInstall handler', () => {
-    let handler: any;
-    beforeEach(() => {
-      handler = getHandler(IPC_CHANNELS.RESTART_AND_INSTALL);
-    });
-
-    test('throws error when updater is unavailable', () => {
-      todesktop.autoUpdater = undefined;
-      expect(() => handler()).toThrow('todesktop.autoUpdater is not available');
-    });
-
-    test('calls restartAndInstall when updater is available', () => {
-      const restartAndInstall = vi.fn();
-      todesktop.autoUpdater = { restartAndInstall } as any;
-      handler();
-      expect(restartAndInstall).toHaveBeenCalled();
-    });
-  });
+  // 注意：更新相关的测试现在由UpdaterService处理
+  // 这里只保留应用重启和退出的测试
 });

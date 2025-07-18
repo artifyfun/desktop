@@ -1,4 +1,3 @@
-import todesktop from '@todesktop/runtime';
 import { app, dialog, ipcMain } from 'electron';
 import log from 'electron-log/main';
 
@@ -52,49 +51,6 @@ export function registerAppHandlers() {
     }
   );
 
-  ipcMain.handle(
-    IPC_CHANNELS.CHECK_FOR_UPDATES,
-    async (options?: object): Promise<{ isUpdateAvailable: boolean; version?: string }> => {
-      log.info('Manually checking for updates');
-
-      const updater = todesktop.autoUpdater;
-
-      if (!updater) {
-        log.error('todesktop.autoUpdater is not available');
-        throw new Error('todesktop.autoUpdater is not available');
-      }
-
-      const result = await updater.checkForUpdates(options);
-
-      if (result.updateInfo) {
-        const { version, releaseDate } = result.updateInfo;
-        const prettyDate = new Date(releaseDate).toLocaleString();
-        log.info(`Update available: version ${version} released on ${prettyDate}`);
-      } else {
-        log.info('No updates available');
-      }
-
-      return {
-        isUpdateAvailable: !!result.updateInfo,
-        version: result.updateInfo?.version,
-      };
-    }
-  );
-
-  ipcMain.handle(IPC_CHANNELS.RESTART_AND_INSTALL, (options?: object) => {
-    log.info('Restarting and installing update');
-
-    const updater = todesktop.autoUpdater;
-    if (!updater) {
-      log.error('todesktop.autoUpdater is not available');
-      throw new Error('todesktop.autoUpdater is not available');
-    }
-
-    try {
-      updater.restartAndInstall(options);
-    } catch (error) {
-      log.error(`Failed to restart and install update`, error);
-      throw new Error(`Failed to restart and install update: ${error}`);
-    }
-  });
+  // 注意：更新相关的IPC处理器现在由UpdaterService处理
+  // 这里保留其他应用相关的处理器
 }

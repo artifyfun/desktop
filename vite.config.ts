@@ -4,6 +4,7 @@ import { UserConfig } from 'vite';
 import { defineConfig, mergeConfig } from 'vite';
 
 import { viteElectronAppPlugin } from './infrastructure/viteElectronAppPlugin';
+import { viteStaticAssetsPlugin } from './infrastructure/viteStaticAssetsPlugin';
 import { version } from './package.json';
 import { external, getBuildConfig } from './vite.base.config';
 
@@ -23,12 +24,14 @@ export default defineConfig((env) => {
     },
     server: {
       watch: {
-        ignored: ['**/assets/ComfyUI/**', 'venv/**'],
+        ignored: ['**/assets/ComfyUI/**', 'venv/**', '**/assets/web/**'],
       },
     },
     plugins: [
       // Custom hot reload solution for vite 6
       viteElectronAppPlugin(),
+      // Static assets copy plugin
+      viteStaticAssetsPlugin(),
       process.env.NODE_ENV === 'production'
         ? sentryVitePlugin({
             org: 'comfy-org',

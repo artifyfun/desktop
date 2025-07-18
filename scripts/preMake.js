@@ -5,9 +5,8 @@ import process from 'node:process';
 
 /** @param {{ appOutDir, packager, outDir }} arg0 */
 const preMake = () => {
-  const firstInstallOnToDesktopServers = process.env.TODESKTOP_CI && process.env.TODESKTOP_INITIAL_INSTALL_PHASE;
   // Do NOT run on CI
-  if (process.env.CI || firstInstallOnToDesktopServers) return;
+  if (process.env.CI) return;
 
   const isNvidia = process.argv.at(-1) === '--nvidia';
 

@@ -89,6 +89,7 @@ export class ComfyServer implements HasTelemetry {
       'base-directory': this.basePath,
       'extra-model-paths-config': ComfyServerConfig.configPath,
       'log-stdout': '',
+      'enable-cors-header': ''
     };
   }
 

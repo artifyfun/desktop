@@ -1,4 +1,3 @@
-import todesktop from '@todesktop/runtime';
 import { app, ipcMain } from 'electron';
 import log from 'electron-log/main';
 
@@ -14,6 +13,7 @@ import { AppWindow } from './appWindow';
 import type { ComfyInstallation } from './comfyInstallation';
 import { ComfyServer } from './comfyServer';
 import type { DevOverrides } from './devOverrides';
+import { UpdaterService } from '../services/updater';
 
 export class ComfyDesktopApp implements HasTelemetry {
   public comfyServer: ComfyServer | null = null;
@@ -24,7 +24,9 @@ export class ComfyDesktopApp implements HasTelemetry {
     readonly telemetry: ITelemetry
   ) {
     this.registerIPCHandlers();
-    this.initializeTodesktop();
+    // 初始化UpdaterService
+    const updaterService = new UpdaterService();
+    updaterService.initialize();
   }
 
   get basePath() {
@@ -61,16 +63,6 @@ export class ComfyDesktopApp implements HasTelemetry {
     }
 
     return serverArgs;
-  }
-
-  initializeTodesktop(): void {
-    log.debug('Initializing todesktop');
-    todesktop.init({
-      autoCheckInterval: 60 * 60 * 1000, // every hour
-      customLogger: log,
-      updateReadyAction: { showInstallAndRestartPrompt: 'always', showNotification: 'always' },
-      autoUpdater: useComfySettings().get('Comfy-Desktop.AutoUpdate'),
-    });
   }
 
   registerIPCHandlers(): void {

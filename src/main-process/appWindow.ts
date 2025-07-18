@@ -21,6 +21,7 @@ import { ElectronError } from '@/infrastructure/electronError';
 import type { Page } from '@/infrastructure/interfaces';
 import { type IAppState, useAppState } from '@/main-process/appState';
 import { clamp } from '@/utils';
+import artifyLab from '../artifylab';
 
 import { IPC_CHANNELS, ProgressStatus, ServerArgs } from '../constants';
 import { getAppResourcesPath } from '../install/resourcePaths';
@@ -91,7 +92,7 @@ export class AppWindow {
       : {};
 
     this.window = new BrowserWindow({
-      title: 'ComfyUI',
+      title: 'ArtifyLab',
       width: clampedWidth,
       height: clampedHeight,
       minWidth: 640,
@@ -161,6 +162,11 @@ export class AppWindow {
   public async loadComfyUI(serverArgs: ServerArgs) {
     const host = serverArgs.listen === '0.0.0.0' ? 'localhost' : serverArgs.listen;
     const url = this.devUrlOverride ?? `http://${host}:${serverArgs.port}`;
+    await this.window.loadURL(url);
+  }
+
+  public async loadArtifyLab(serverArgs: ServerArgs) {
+    const url = artifyLab.getUrl(serverArgs)
     await this.window.loadURL(url);
   }
 

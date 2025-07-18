@@ -1,32 +1,32 @@
-name: Publish - All Platforms
+name: Build and Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      release_tag:
-        description: 'Release tag to publish (e.g., v0.4.2)'
-        required: false
-        type: string
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*.*.*'
 
 jobs:
-  build-todesktop:
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'release'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Github checkout
-        uses: actions/checkout@v4
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
 
-      - name: Build
-        uses: ./.github/actions/build/todesktop
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_ORG_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
         with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TODESKTOP_ACCESS_TOKEN: ${{ secrets.TODESKTOP_ACCESS_TOKEN }}
-          TODESKTOP_EMAIL: ${{ secrets.TODESKTOP_EMAIL }}
-          STAGING: 'false'
-          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.event.release.tag_name }}
+          node-version: '20'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build and Publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          yarn run vite:compile
+          yarn run make:assets || true
+          yarn run publish

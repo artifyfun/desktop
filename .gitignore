@@ -43,6 +43,10 @@ typings/
 *.tsbuildinfo
 dist
 
+# ArtifyLab cache
+src/artifylab/public
+src/artifylab/public.backup
+
 # Optional npm cache directory
 .npm
 
@@ -107,6 +111,7 @@ comfyui
 !.vscode/tasks.json
 
 # built assets
+assets/web
 assets/ComfyUI
 assets/cpython*.tar.gz
 assets/python

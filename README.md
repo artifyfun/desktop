@@ -274,36 +274,6 @@ The launch environment can be customised, e.g. add a `"linux"` section to source
 
 When the app has been packaged for use as a production app, it ignores environment variables used to configure development settings. To force the app to read env vars when packaged, use the `--dev-mode` command line argument to launch the app.
 
-# Release
-
-We use Todesktop to build and codesign our distributables. To make a new release:
-
-1. Create a PR that updates package.json to the next version.
-1. Create a Github Release with semantic version tag eg. "v1.0.0"
-1. Make sure it is a pre-release.
-1. Check the Github action "Publish All" runs. It should update the release body with Download links when it is finished.
-1. Test the build, and if it looks good release it on ToDesktop. Also mark the release as "Latest".
-
-If a build fails for some reason, you can manually retry by running the "Publish All" GH action with a release tag as input.
-
-## Release using Claude Code
-
-There is a Claude Code command, "bump-stable", that can be used to automate the release process.
-
-## Utility scripts
-
-A number of utility scripts are defined under the "scripts" field of package.json. For example, to clean up the build artifacts you can run:
-
-```bash
-yarn clean
-
-# Remove files created by yarn make:assets
-yarn clean:assets
-
-# clean:slate also removes node_modules
-yarn clean:slate
-```
-
 ## Crash Reports & Metrics
 
 At the onboarding step, you can opt-in to send us usage metrics. This really helps us prioritize issues and focus our limited engineering time. Read our privacy policy [here](https://comfy.org/privacy).

@@ -50,6 +50,7 @@ export const IPC_CHANNELS = {
   START_TROUBLESHOOTING: 'start-troubleshooting',
   DISABLE_CUSTOM_NODES: 'disable-custom-nodes',
   CHECK_FOR_UPDATES: 'check-for-updates',
+  DOWNLOAD_UPDATE: 'download-update',
   RESTART_AND_INSTALL: 'restart-and-install',
   CHECK_BLACKWELL: 'check-blackwell',
 } as const;
