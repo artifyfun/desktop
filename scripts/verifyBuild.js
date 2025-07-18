@@ -9,7 +9,7 @@ import path from 'node:path';
  */
 const PATHS = {
   mac: {
-    base: 'dist/mac-arm64/ComfyUI.app/Contents/Resources',
+    base: 'dist/mac-arm64/Artify.app/Contents/Resources',
     required: ['ComfyUI', 'ComfyUI/custom_nodes/ComfyUI-Manager', 'UI', 'uv/macos/uv', 'uv/macos/uvx'],
   },
   windows: {
