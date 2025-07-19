@@ -18,10 +18,11 @@ export class UpdaterService {
     // 配置日志
     autoUpdater.logger = log;
 
-    // 设置更新服务器URL
+    // 设置更新服务器URL - 修复GitHub配置
     autoUpdater.setFeedURL({
-      provider: 'generic',
-      url: 'https://github.com/artifyfun/desktop/releases/latest',
+      provider: 'github',
+      owner: 'artifyfun',
+      repo: 'desktop',
       channel: 'latest',
     });
 
