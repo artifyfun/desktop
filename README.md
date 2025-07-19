@@ -9,9 +9,9 @@ Please read the [user guide](https://docs.comfy.org/installation/desktop)
 
 # Download
 
-Windows (NVIDIA) NSIS x64: [Download](https://download.comfy.org/windows/nsis/x64)
+Windows (NVIDIA) NSIS x64: [Download](https://github.com/artifyfun/desktop/releases/latest)
 
-macOS ARM: [Download](https://download.comfy.org/mac/dmg/arm64)
+macOS ARM: [Download](https://github.com/artifyfun/desktop/releases/latest)
 
 # Overview
 
