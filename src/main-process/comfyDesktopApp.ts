@@ -24,8 +24,8 @@ export class ComfyDesktopApp implements HasTelemetry {
     readonly telemetry: ITelemetry
   ) {
     this.registerIPCHandlers();
-    // 初始化UpdaterService
-    const updaterService = new UpdaterService();
+    // 初始化UpdaterService - 使用单例模式
+    const updaterService = UpdaterService.getInstance();
     updaterService.initialize();
   }
 

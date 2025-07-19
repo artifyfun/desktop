@@ -65,9 +65,13 @@ const config: Configuration = {
         arch: ['x64', 'arm64'],
       },
     ],
-    identity: null,
+    identity: null, // 禁用代码签名
     hardenedRuntime: false,
     gatekeeperAssess: false,
+    // 禁用代码签名验证
+    electronUpdaterCompatibility: '>=2.8',
+    // 添加更新配置
+    electronLanguages: ['en', 'zh-CN'],
   },
   
   // Linux 配置
@@ -96,10 +100,13 @@ const config: Configuration = {
   },
   
   dmg: {
-    sign: false,
+    sign: false, // 禁用DMG签名
   },
   
   asarUnpack: ['**/node_modules/node-pty/**/*'],
+  
+  // 更新配置
+  electronUpdaterCompatibility: '>=2.8',
 };
 
 export default config; 

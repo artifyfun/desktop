@@ -30,6 +30,7 @@ export function registerArtifyHandlers() {
     return {
       version: app.getVersion(),
       name: app.getName(),
+      repository: 'artifyfun/desktop', // 添加repository字段用于GitHub发布页
     }
   })
 

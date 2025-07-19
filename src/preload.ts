@@ -35,6 +35,15 @@ export interface InstallOptions {
   bypassSpaceCheck?: boolean;
 }
 
+export interface AppInfo {
+  /** Application version */
+  version: string;
+  /** Application name */
+  name: string;
+  /** GitHub repository in format 'owner/repo' */
+  repository: string;
+}
+
 export interface SystemPaths {
   appData: string;
   appPath: string;
@@ -458,7 +467,7 @@ const electronAPI = {
     getConfig: (data: Record<string, unknown>) => ipcRenderer.invoke('artify-getConfig', data),
     loadComfyUI: (data: Record<string, unknown>) => ipcRenderer.invoke('artify-loadComfyUI', data),
     loadArtifyLab: (data: Record<string, unknown>) => ipcRenderer.invoke('artify-loadArtifyLab', data),
-    getAppInfo: (data: Record<string, unknown>) => ipcRenderer.invoke('artify-getAppInfo'),
+    getAppInfo: (): Promise<AppInfo> => ipcRenderer.invoke('artify-getAppInfo'),
     /**
      * 扫描文件夹下所有文件
      * @param folderPath 要扫描的文件夹路径
@@ -501,20 +510,21 @@ const electronAPI = {
    * Manually check for application updates.
    * @returns A promise that resolves to update availability and version.
    */
-  checkForUpdates: (): Promise<{ isUpdateAvailable: boolean; version?: string }> =>
+  checkForUpdates: (): Promise<{ isUpdateAvailable: boolean; version?: string; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.CHECK_FOR_UPDATES),
 
   /**
    * Download the available update.
    * @returns A promise that resolves when download is complete.
    */
-  downloadUpdate: (): Promise<{ success: boolean }> =>
+  downloadUpdate: (): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.DOWNLOAD_UPDATE),
 
   /**
    * Restarts and installs updates using electron-updater.
    */
-  restartAndInstall: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.RESTART_AND_INSTALL),
+  restartAndInstall: (): Promise<{ success: boolean; error?: string }> => 
+    ipcRenderer.invoke(IPC_CHANNELS.RESTART_AND_INSTALL),
 } as const;
 
 export type ElectronAPI = typeof electronAPI;
