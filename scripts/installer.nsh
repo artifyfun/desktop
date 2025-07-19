@@ -26,7 +26,7 @@
 !macro customRemoveFiles
   ${ifNot} ${isUpdated}
     ClearErrors
-    FileOpen $0 "$APPDATA\artify\extra_models_config.yaml" r
+    FileOpen $0 "$APPDATA\Artify\extra_models_config.yaml" r
     var /global line
     var /global lineLength
     var /global prefix
@@ -77,30 +77,7 @@
     ${LoopUntil} 1 = 0
 
     FileClose $0
-    RMDir /r "$APPDATA\artify"
-
-    ; 删除 $EXEDIR 下除自身以外的所有文件和文件夹
-    Push $R0
-    Push $R1
-    Push $R2
-    StrCpy $R0 "$EXEDIR"
-    FindFirst $R1 $R2 "$R0\*.*"
-    ${DoWhile} $R1 != 0
-      StrCmp "$R0\$R2" "$EXEPATH" skip_delete
-        IfFileExists "$R0\$R2\*.*" 0 +3
-          RMDir /r "$R0\$R2"
-          Goto next_item
-        Delete "$R0\$R2"
-      skip_delete:
-      next_item:
-      FindNext $R1 $R2
-    ${Loop}
-    FindClose $R1
-    Pop $R2
-    Pop $R1
-    Pop $R0
-
-    ; 删除自身（重启后）
-    Delete /REBOOTOK "$EXEPATH"
+    Delete "$APPDATA\Artify\extra_models_config.yaml"
+    Delete "$APPDATA\Artify\config.json"
   ${endIf}
 !macroend
