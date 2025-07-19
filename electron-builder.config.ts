@@ -70,8 +70,6 @@ const config: Configuration = {
     gatekeeperAssess: false,
     // 禁用代码签名验证
     electronUpdaterCompatibility: '>=2.8',
-    // 添加更新配置
-    electronLanguages: ['en', 'zh-CN'],
   },
   
   // Linux 配置
