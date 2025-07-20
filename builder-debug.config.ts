@@ -13,6 +13,8 @@ const debugConfig: Configuration = {
     icon: './assets/UI/Comfy_Logo.ico',
     target: 'zip',
     signtoolOptions: null,
+    signAndEditExecutable: true,
+    requestedExecutionLevel: 'asInvoker',
   },
   mac: {
     icon: './assets/UI/Comfy_Logo.icns',

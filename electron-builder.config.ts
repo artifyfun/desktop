@@ -49,7 +49,8 @@ const config: Configuration = {
         arch: ['x64'],
       },
     ],
-    signAndEditExecutable: false,
+    signAndEditExecutable: true,
+    requestedExecutionLevel: 'asInvoker',
   },
   
   // macOS 配置
