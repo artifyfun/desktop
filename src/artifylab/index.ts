@@ -4,7 +4,7 @@ import os from 'node:os';
 import { getAppResourcesPath } from '../install/resourcePaths';
 import { getServer, startServer, getServerPort } from './server';
 
-const DEV_MODE = process.env.NODE_ENV === 'development'
+const DEV_MODE = false
 const DEV_ORIGIN = `http://localhost:5000`
 let comfy_origin: string
 let web_root: string
