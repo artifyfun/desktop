@@ -45,6 +45,7 @@
     "reset-install": "node scripts/resetInstall.js",
     "sign": "node debug/sign.js",
     "start": "vite build --config vite.preload.config.ts && vite build --watch --mode startwatch",
+    "dev": "DEV_MODE=true yarn run start",
     "test:e2e": "npx playwright test",
     "test:e2e:update": "npx playwright test --update-snapshots",
     "test:unit": "vitest run",
