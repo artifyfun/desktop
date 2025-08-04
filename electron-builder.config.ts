@@ -59,12 +59,15 @@ const config: Configuration = {
     target: [
       {
         target: 'dmg',
-        arch: ['x64', 'arm64'],
+        arch: [
+          // 'x64',
+          'arm64'
+        ],
       },
-      {
-        target: 'zip',
-        arch: ['x64', 'arm64'],
-      },
+      // {
+      //   target: 'zip',
+      //   arch: ['x64', 'arm64'],
+      // },
     ],
     identity: null, // 禁用代码签名
     hardenedRuntime: false,
