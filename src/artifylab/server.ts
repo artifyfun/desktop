@@ -8,6 +8,8 @@ import ngrok from '@ngrok/ngrok';
 import { createServer } from 'node:net';
 import type { Server as HttpServer } from 'node:http';
 import history from 'connect-history-api-fallback';
+import { exec } from 'node:child_process';
+import { platform } from 'node:os';
 
 
 // 导入优化后的模块
@@ -95,6 +97,11 @@ interface NgrokRequest {
 interface NgrokConfig {
   comfy_origin: string;
   server_origin: string;
+}
+
+interface ShutdownRequest {
+  delay?: number; // 延迟关机时间（秒），默认为0
+  force?: boolean; // 是否强制关机，默认为false
 }
 
 // 中间件配置
@@ -402,8 +409,9 @@ app.post("/api/apps", (req, res) => {
 
 app.post("/api/market/apps", async (req, res) => {
   try {
-    const { data: apps } = await cachedFetchGet(CONFIG.APP_MARKET_URL) as { data: any };
-    res.status(HTTP_STATUS.OK).json(createSuccessResponse(apps));
+    // const { data: apps } = await cachedFetchGet(CONFIG.APP_MARKET_URL) as { data: any };
+    // res.status(HTTP_STATUS.OK).json(createSuccessResponse(apps));
+    throw new Error('ASSETS NOT FOUND')
   } catch (error) {
     logger.error("Failed to get market apps", error);
     handleApiError(error, res);
@@ -578,8 +586,9 @@ app.post("/api/config/update", (req, res) => {
 // 获取应用风格
 app.post("/api/build/styles", async (req, res) => {
   try {
-    const { data: styles } = await cachedFetchGet(CONFIG.APP_STYLES_URL) as { data: any };
-    res.status(HTTP_STATUS.OK).json(createSuccessResponse(styles));
+    // const { data: styles } = await cachedFetchGet(CONFIG.APP_STYLES_URL) as { data: any };
+    // res.status(HTTP_STATUS.OK).json(createSuccessResponse(styles));
+    throw new Error('ASSETS NOT FOUND')
   } catch (error) {
     logger.error("Failed to get build styles", error);
     handleApiError(error, res);
@@ -735,6 +744,109 @@ app.post("/queue", async (req, res) => {
     res.status(HTTP_STATUS.OK).json(data);
   } catch (error) {
     logger.error("Failed to get queue", error);
+    handleApiError(error, res);
+  }
+});
+
+// 关机接口
+app.post("/api/shutdown", async (req: express.Request<{}, {}, ShutdownRequest>, res: express.Response) => {
+  try {
+    const { delay = 0, force = false } = req.body;
+    
+    // 验证延迟时间
+    if (delay < 0 || delay > 3600) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json(
+        createErrorResponse("Delay must be between 0 and 3600 seconds")
+      );
+    }
+
+    const currentPlatform = platform();
+    let shutdownCommand: string;
+
+    // 根据操作系统构建关机命令
+    switch (currentPlatform) {
+      case 'win32':
+        // Windows 关机命令
+        const forceFlag = force ? '/f' : '';
+        const delayFlag = delay > 0 ? `/t ${delay}` : '';
+        shutdownCommand = `shutdown /s ${forceFlag} ${delayFlag}`.trim();
+        break;
+      
+      case 'darwin':
+        // macOS 关机命令
+        if (delay > 0) {
+          shutdownCommand = `sudo shutdown -h +${Math.ceil(delay / 60)}`;
+        } else {
+          shutdownCommand = 'sudo shutdown -h now';
+        }
+        break;
+      
+      case 'linux':
+        // Linux 关机命令
+        if (delay > 0) {
+          shutdownCommand = `sudo shutdown -h +${Math.ceil(delay / 60)}`;
+        } else {
+          shutdownCommand = 'sudo shutdown -h now';
+        }
+        break;
+      
+      default:
+        return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(
+          createErrorResponse(`Unsupported operating system: ${currentPlatform}`)
+        );
+    }
+
+    logger.info("Executing shutdown command", {
+      platform: currentPlatform,
+      command: shutdownCommand,
+      delay,
+      force
+    });
+
+    // 执行关机命令
+    exec(shutdownCommand, (error, stdout, stderr) => {
+      if (error) {
+        logger.error("Shutdown command failed", {
+          error: error.message,
+          stderr,
+          platform: currentPlatform
+        });
+        
+        // 如果是权限错误，提供更友好的错误信息
+        if (error.message.includes('permission') || error.message.includes('denied')) {
+          return res.status(HTTP_STATUS.UNAUTHORIZED).json(
+            createErrorResponse("Permission denied. Please run the application with administrator/sudo privileges.")
+          );
+        }
+        
+        return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(
+          createErrorResponse(`Shutdown failed: ${error.message}`)
+        );
+      }
+
+      logger.info("Shutdown command executed successfully", {
+        stdout,
+        platform: currentPlatform
+      });
+
+      const message = delay > 0 
+        ? `System will shutdown in ${delay} seconds`
+        : "System shutdown initiated";
+
+      res.status(HTTP_STATUS.OK).json(
+        createSuccessResponse(
+          { 
+            command: shutdownCommand,
+            platform: currentPlatform,
+            delay,
+            force
+          },
+          message
+        )
+      );
+    });
+
+  } catch (error) {
     handleApiError(error, res);
   }
 });
