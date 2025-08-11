@@ -3,7 +3,7 @@
   "productName": "Artify",
   "repository": "github:artifyfun/desktop",
   "copyright": "Copyright © 2024 Comfy Org，Copyright © 2025 ArtifyFun",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "homepage": "https://space.bilibili.com/1584901",
   "description": "Make AI easier to use.",
   "main": ".vite/build/main.cjs",
