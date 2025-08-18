@@ -186,13 +186,10 @@ export function registerArtifyHandlers() {
           ? path.join(venvPath, 'Scripts', 'python.exe')
           : path.join(venvPath, 'bin', 'python');
         
-        // 创建一个cmd窗口，但不执行任何命令
-        const cmdProcess = spawn('cmd', [pythonInterpreterPath], {
-          detached: true, // 使进程独立于父进程，这样可以使用.unref()方法
-          stdio: 'ignore' // 忽略标准输入输出，这样cmd窗口就不会显示任何输出
-        });
-        
-        cmdProcess.unref(); // 让Node.js退出时不会等待这个子进程
+        return {
+          success: true,
+          cmd: pythonInterpreterPath
+        }
       }
     } catch (error) {
       console.error('Error opening cmd:', error);
