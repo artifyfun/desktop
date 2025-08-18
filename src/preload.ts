@@ -504,6 +504,7 @@ const electronAPI = {
       openedFolder?: string; 
       message?: string; 
     }> => ipcRenderer.invoke('artify-openRootFolder', folderName),
+    openCMD: (type: string) => ipcRenderer.invoke('artify-openCMD', type)
   },
 
   /**

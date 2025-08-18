@@ -1,6 +1,7 @@
 import { app, dialog, ipcMain, shell } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
+import { ChildProcess, spawn } from 'node:child_process';
 import { useDesktopConfig } from '../store/desktopConfig';
 import artifyUtils from '.'
 
@@ -162,6 +163,39 @@ export function registerArtifyHandlers() {
       }
     } catch (error) {
       console.error('Error opening root folder:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  })
+
+  /**
+   * 打开命令行
+   * @param event IPC事件
+   * @param type 命令行类型，python: python虚拟机环境下的python可执行文件
+   * @returns 是否成功打开
+   */
+  ipcMain.handle('artify-openCMD', async (event, type: string) => {
+    try {
+      const basePath = useDesktopConfig().get('basePath');
+      if (!basePath) {
+        throw new Error('Base path not configured');
+      }
+      if (type === 'python') {
+        const venvPath = path.join(basePath, '.venv');
+        const pythonInterpreterPath =
+        process.platform === 'win32'
+          ? path.join(venvPath, 'Scripts', 'python.exe')
+          : path.join(venvPath, 'bin', 'python');
+        
+        // 创建一个cmd窗口，但不执行任何命令
+        const cmdProcess = spawn('cmd', [pythonInterpreterPath], {
+          detached: true, // 使进程独立于父进程，这样可以使用.unref()方法
+          stdio: 'ignore' // 忽略标准输入输出，这样cmd窗口就不会显示任何输出
+        });
+        
+        cmdProcess.unref(); // 让Node.js退出时不会等待这个子进程
+      }
+    } catch (error) {
+      console.error('Error opening cmd:', error);
       return { success: false, error: (error as Error).message };
     }
   })
