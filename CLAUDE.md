@@ -8,15 +8,15 @@
 
 ## Key Technologies
 
-- **Electron** - Desktop app framework
-- **TypeScript** - Primary language
-- **Vite** - Build tool and bundler
-- **Node.js** - Runtime (use nvm)
-- **Yarn** - Package manager
-- **Vitest** - Unit testing
-- **Playwright** - E2E testing
-- **ESLint** - Linting
-- **Prettier** - Formatting
+- **Electron**: Desktop app framework
+- **TypeScript**: Primary language
+- **Vite**: Build tool and bundler
+- **Node.js**: Runtime (use nvm)
+- **Yarn**: Package manager
+- **Vitest**: Unit testing
+- **Playwright**: E2E testing
+- **ESLint**: Linting
+- **Prettier**: Formatting
 
 ## Development Commands
 
@@ -54,28 +54,36 @@ yarn make:nvidia       # Build with NVIDIA GPU support
 yarn vite:compile      # Compile with Vite
 ```
 
+### Troubleshooting
+
+- If you encounter errors regarding `NODE_MODULE_VERSION`, try running `npx electron-rebuild` before other troubleshooting steps.
+
+## Custom testing
+
+We have testing configured with Vitest. Use vitest to create any tests you need. Do not attempt to custom code your own testing infrastructure, as that is pointless and will do nothing but derail you.
+
 ## Project Structure
 
 ### Source Code (`/src/`)
 
-- **`main.ts`** - Main Electron process entry point
-- **`desktopApp.ts`** - Core application logic
-- **`preload.ts`** - Electron preload script
-- **`main-process/`** - Main process modules
+- **`main.ts`**: Main Electron process entry point
+- **`desktopApp.ts`**: Core application logic
+- **`preload.ts`**: Electron preload script
+- **`main-process/`**: Main process modules
   - `comfyDesktopApp.ts` - ComfyUI server management
   - `appWindow.ts` - Window management
   - `comfyServer.ts` - Server lifecycle
-- **`install/`** - Installation & setup logic
-- **`handlers/`** - IPC message handlers
-- **`services/`** - Core services (telemetry, Sentry)
-- **`config/`** - Configuration management
-- **`store/`** - Persistent storage
-- **`utils.ts`** - Utility functions
+- **`install/`**: Installation & setup logic
+- **`handlers/`**: IPC message handlers
+- **`services/`**: Core services (telemetry, Sentry)
+- **`config/`**: Configuration management
+- **`store/`**: Persistent storage
+- **`utils.ts`**: Utility functions
 
 ### Tests (`/tests/`)
 
-- **`unit/`** - Vitest-based component tests
-- **`integration/`** - Playwright E2E tests
+- **`unit/`**: Vitest-based component tests
+- **`integration/`**: Playwright E2E tests
   - `install/` - Fresh installation testing
   - `post-install/` - Tests after app setup
   - `shared/` - Common test functionality
@@ -89,26 +97,26 @@ yarn vite:compile      # Compile with Vite
 
 ## Important Files & Configuration
 
-- **`package.json`** - Defines ComfyUI versions and dependencies
-- **`assets/requirements/`** - Pre-compiled Python requirements by platform
-- **`todesktop.json`** - Cloud build and distribution config
-- **`builder-debug.config.ts`** - Local development build settings
+- **`package.json`**: Defines ComfyUI versions and dependencies
+- **`assets/requirements/`**: Pre-compiled Python requirements by platform
+- **`todesktop.json`**: Cloud build and distribution config
+- **`builder-debug.config.ts`**: Local development build settings
 - **Multi-config Vite setup** with separate configs for main, preload, and types
 
 ## Bundled Components
 
 The app packages these components:
 
-- **ComfyUI** - AI diffusion model GUI
-- **ComfyUI_frontend** - Modern web frontend
-- **ComfyUI-Manager** - Plugin/extension manager
-- **uv** - Fast Python package manager
+- **ComfyUI**: AI diffusion model GUI
+- **ComfyUI_frontend**: Modern web frontend
+- **ComfyUI-Manager**: Plugin/extension manager
+- **uv**: Fast Python package manager
 
 ## Development Environment Variables
 
-- **`--dev-mode`** - Flag for packaged apps in development
-- **`COMFY_HOST`/`COMFY_PORT`** - External server for development
-- **`VUE_DEVTOOLS_PATH`** - Frontend debugging support
+- **`--dev-mode`**: Flag for packaged apps in development
+- **`COMFY_HOST`/`COMFY_PORT`**: External server for development
+- **`VUE_DEVTOOLS_PATH`**: Frontend debugging support
 
 ## Platform-Specific Paths
 
@@ -124,6 +132,9 @@ The app packages these components:
 - Follow Electron security best practices
 - Use the existing store patterns for configuration management
 - Test changes with both unit tests (Vitest) and E2E tests (Playwright)
+- Use JSDoc format to write documentation for methods
+  - Common tags are `@param`, and `@return` (do not use for `void` return type)
+  - Use `{@link }` to reference symbols
 
 ## Before Committing
 
