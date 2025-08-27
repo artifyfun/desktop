@@ -18,7 +18,7 @@
       "version": "0.3.52",
       "optionalBranch": ""
     },
-    "managerCommit": "330c4657b1dc067f2cc54e8be7ab0c9ade5888d8",
+    "managerCommit": "d82e1f5d677fec0b85a6be6beb1e32d5627ef6af",
     "uvVersion": "0.8.13"
   },
   "scripts": {
@@ -89,7 +89,7 @@
     "prettier": "^3.3.3",
     "rimraf": "^6.0.1",
     "ts-node": "^10.0.0",
-    "typescript": "^5.7.2",
+    "typescript": "^5.9.2",
     "typescript-eslint": "^8.18.1",
     "vite": "^5.4.11",
     "vite-plugin-dts": "^4.3.0",
