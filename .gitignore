@@ -128,3 +128,6 @@ venv/
 
 # UV
 assets/uv
+
+# Cursor local rules (untracked per-developer)
+.cursor/rules/*.local.mdc
