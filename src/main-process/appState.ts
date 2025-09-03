@@ -4,12 +4,16 @@ import { EventEmitter } from 'node:events';
 import { AppStartError } from '@/infrastructure/appStartError';
 import type { Page } from '@/infrastructure/interfaces';
 
+import type { InstallStageInfo } from './installStages';
+
 /** App event names */
 type AppStateEvents = {
   /** Occurs once, immediately before registering IPC handlers. */
   ipcRegistered: [];
   /** Occurs once, immediately after the ComfyUI server has finished loading. */
   loaded: [];
+  /** Occurs when the installation stage changes */
+  installStageChanged: [InstallStageInfo];
 };
 
 /**
@@ -26,11 +30,15 @@ export interface IAppState extends Pick<EventEmitter<AppStateEvents>, 'on' | 'on
   readonly loaded: boolean;
   /** The last page the app loaded from the desktop side. @see {@link AppWindow.loadPage} */
   currentPage?: Page;
+  /** The current installation stage information */
+  installStage?: InstallStageInfo;
 
   /** Updates state - IPC handlers have been registered. */
   emitIpcRegistered(): void;
   /** Updates state - the app has loaded. */
   emitLoaded(): void;
+  /** Updates the installation stage */
+  setInstallStage(stage: InstallStageInfo): void;
 }
 
 /**
@@ -41,6 +49,7 @@ class AppState extends EventEmitter<AppStateEvents> implements IAppState {
   ipcRegistered = false;
   loaded = false;
   currentPage?: Page;
+  installStage?: InstallStageInfo;
 
   initialize() {
     // Store quitting state - suppresses errors when already quitting
@@ -62,6 +71,11 @@ class AppState extends EventEmitter<AppStateEvents> implements IAppState {
 
   emitLoaded() {
     if (!this.loaded) this.emit('loaded');
+  }
+
+  setInstallStage(stage: InstallStageInfo) {
+    this.installStage = stage;
+    this.emit('installStageChanged', stage);
   }
 }
 
