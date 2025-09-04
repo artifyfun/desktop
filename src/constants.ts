@@ -101,17 +101,10 @@ export const InstallStage = {
   INITIALIZING_CONFIG: 'initializing_config',
   PYTHON_ENVIRONMENT_SETUP: 'python_environment_setup',
   INSTALLING_REQUIREMENTS: 'installing_requirements',
+  INSTALLING_PYTORCH: 'installing_pytorch',
+  INSTALLING_COMFYUI_REQUIREMENTS: 'installing_comfyui_requirements',
+  INSTALLING_MANAGER_REQUIREMENTS: 'installing_manager_requirements',
   MIGRATING_CUSTOM_NODES: 'migrating_custom_nodes',
-
-  // Validation stages
-  VALIDATION_IN_PROGRESS: 'validation_in_progress',
-  VALIDATION_BASEPATH: 'validation_basepath',
-  VALIDATION_VENV: 'validation_venv',
-  VALIDATION_PYTHON: 'validation_python',
-  VALIDATION_UV: 'validation_uv',
-  VALIDATION_PACKAGES: 'validation_packages',
-  VALIDATION_GIT: 'validation_git',
-  VALIDATION_VCREDIST: 'validation_vcredist',
 
   // Post-installation
   MAINTENANCE_MODE: 'maintenance_mode',
