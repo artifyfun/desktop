@@ -5,6 +5,9 @@ import path from 'node:path';
 import { ComfyConfigManager } from '../config/comfyConfigManager';
 import { ComfyServerConfig, ModelPaths } from '../config/comfyServerConfig';
 import { ComfySettings, type ComfySettingsData } from '../config/comfySettings';
+import { InstallStage } from '../constants';
+import { useAppState } from '../main-process/appState';
+import { createInstallStageInfo } from '../main-process/installStages';
 import { InstallOptions } from '../preload';
 import { HasTelemetry, ITelemetry, trackEvent } from '../services/telemetry';
 
@@ -31,6 +34,9 @@ export class InstallWizard implements HasTelemetry {
     // Setup the ComfyUI folder structure.
     ComfyConfigManager.createComfyDirectories(this.basePath);
     this.initializeUserFiles();
+
+    useAppState().setInstallStage(createInstallStageInfo(InstallStage.INITIALIZING_CONFIG, { progress: 10 }));
+
     await this.initializeSettings();
     await this.initializeModelPaths();
   }
