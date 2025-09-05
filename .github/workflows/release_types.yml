@@ -1,6 +1,7 @@
-name: Publish to npm
+name: Publish ElectronAPI to npm
 
 on:
+  workflow_dispatch:
   pull_request:
     types: [closed]
     branches:
@@ -12,20 +13,37 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     if: >
-      github.event.pull_request.merged == true &&
-      contains(github.event.pull_request.labels.*.name, 'ReleaseTypes')
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+      contains(github.event.pull_request.labels.*.name, 'ReleaseTypes'))
     steps:
       - uses: actions/checkout@v4
 
       - name: Use Node.js 20.x
-        uses: JP250552/setup-node@0c618ceb2e48275dc06e86901822fd966ce75ba2
+        uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-          corepack: true
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Enable Corepack and pin Yarn
+        run: |
+          corepack enable
+          corepack prepare yarn@4.5.0 --activate
+          yarn --version
+
+      - name: Cache yarn dependencies
+        uses: actions/cache@v4
+        with:
+          path: .yarn/cache
+          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock', '.yarnrc.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
       - name: Install dependencies
-        run: yarn install
+        run: yarn install --immutable
 
       - name: Build types
         run: yarn run vite:types

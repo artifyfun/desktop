@@ -1,8 +1,11 @@
 import { app } from 'electron';
 import { EventEmitter } from 'node:events';
 
+import { InstallStage } from '@/constants';
 import { AppStartError } from '@/infrastructure/appStartError';
 import type { Page } from '@/infrastructure/interfaces';
+
+import { type InstallStageInfo, createInstallStageInfo } from './installStages';
 
 /** App event names */
 type AppStateEvents = {
@@ -10,6 +13,8 @@ type AppStateEvents = {
   ipcRegistered: [];
   /** Occurs once, immediately after the ComfyUI server has finished loading. */
   loaded: [];
+  /** Occurs when the install stage changes. */
+  installStageChanged: [InstallStageInfo];
 };
 
 /**
@@ -26,11 +31,15 @@ export interface IAppState extends Pick<EventEmitter<AppStateEvents>, 'on' | 'on
   readonly loaded: boolean;
   /** The last page the app loaded from the desktop side. @see {@link AppWindow.loadPage} */
   currentPage?: Page;
+  /** Current installation stage information. */
+  readonly installStage: InstallStageInfo;
 
   /** Updates state - IPC handlers have been registered. */
   emitIpcRegistered(): void;
   /** Updates state - the app has loaded. */
   emitLoaded(): void;
+  /** Updates the current install stage. */
+  setInstallStage(stage: InstallStageInfo): void;
 }
 
 /**
@@ -41,6 +50,13 @@ class AppState extends EventEmitter<AppStateEvents> implements IAppState {
   ipcRegistered = false;
   loaded = false;
   currentPage?: Page;
+  installStage: InstallStageInfo;
+
+  constructor() {
+    super();
+    // Initialize install stage to idle
+    this.installStage = createInstallStageInfo(InstallStage.IDLE, { progress: 0 });
+  }
 
   initialize() {
     // Store quitting state - suppresses errors when already quitting
@@ -62,6 +78,11 @@ class AppState extends EventEmitter<AppStateEvents> implements IAppState {
 
   emitLoaded() {
     if (!this.loaded) this.emit('loaded');
+  }
+
+  setInstallStage(stage: InstallStageInfo) {
+    this.installStage = stage;
+    this.emit('installStageChanged', stage);
   }
 }
 

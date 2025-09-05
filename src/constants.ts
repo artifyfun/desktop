@@ -53,6 +53,8 @@ export const IPC_CHANNELS = {
   DOWNLOAD_UPDATE: 'download-update',
   RESTART_AND_INSTALL: 'restart-and-install',
   CHECK_BLACKWELL: 'check-blackwell',
+  GET_INSTALL_STAGE: 'get-install-stage',
+  INSTALL_STAGE_UPDATE: 'install-stage-update',
 } as const;
 
 export enum ProgressStatus {
@@ -80,6 +82,37 @@ export enum ProgressStatus {
 }
 
 export type IPCChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
+
+export const InstallStage = {
+  // Initial stages
+  IDLE: 'idle',
+  APP_INITIALIZING: 'app_initializing',
+  CHECKING_EXISTING_INSTALL: 'checking_existing_install',
+
+  // Pre-installation checks
+  HARDWARE_VALIDATION: 'hardware_validation',
+  GIT_CHECK: 'git_check',
+
+  // User interaction
+  WELCOME_SCREEN: 'welcome_screen',
+  INSTALL_OPTIONS_SELECTION: 'install_options_selection',
+
+  // Installation process
+  CREATING_DIRECTORIES: 'creating_directories',
+  INITIALIZING_CONFIG: 'initializing_config',
+  PYTHON_ENVIRONMENT_SETUP: 'python_environment_setup',
+  INSTALLING_REQUIREMENTS: 'installing_requirements',
+  INSTALLING_PYTORCH: 'installing_pytorch',
+  INSTALLING_COMFYUI_REQUIREMENTS: 'installing_comfyui_requirements',
+  INSTALLING_MANAGER_REQUIREMENTS: 'installing_manager_requirements',
+  MIGRATING_CUSTOM_NODES: 'migrating_custom_nodes',
+
+  // Post-installation
+  MAINTENANCE_MODE: 'maintenance_mode',
+  STARTING_SERVER: 'starting_server',
+  READY: 'ready',
+  ERROR: 'error',
+} as const;
 
 export const ELECTRON_BRIDGE_API = 'electronAPI';
 
@@ -137,9 +170,9 @@ export enum TorchMirrorUrl {
   /** Regular PyPI index URL. */
   Default = 'https://pypi.org/simple/',
   /** PyTorch CUDA mirror. */
-  Cuda = 'https://download.pytorch.org/whl/cu128',
+  Cuda = 'https://download.pytorch.org/whl/cu129',
   /** PyTorch Nightly CUDA mirror. */
-  NightlyCuda = 'https://download.pytorch.org/whl/nightly/cu128',
+  NightlyCuda = 'https://download.pytorch.org/whl/nightly/cu129',
   /** PyTorch nightly CPU mirror. */
   NightlyCpu = 'https://download.pytorch.org/whl/nightly/cpu',
 }
