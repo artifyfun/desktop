@@ -6,7 +6,9 @@ import { rm } from 'node:fs/promises';
 import os, { EOL } from 'node:os';
 import path from 'node:path';
 
-import { TorchMirrorUrl } from './constants';
+import { InstallStage, TorchMirrorUrl } from './constants';
+import { useAppState } from './main-process/appState';
+import { createInstallStageInfo } from './main-process/installStages';
 import type { TorchDeviceType } from './preload';
 import { captureSentryException } from './services/sentry';
 import { HasTelemetry, ITelemetry, trackEvent } from './services/telemetry';
@@ -301,6 +303,10 @@ export class VirtualEnvironment implements HasTelemetry {
 
   @trackEvent('install_flow:virtual_environment_install_requirements')
   public async installRequirements(callbacks?: ProcessCallbacks): Promise<void> {
+    useAppState().setInstallStage(
+      createInstallStageInfo(InstallStage.INSTALLING_REQUIREMENTS, { progress: 25 })
+    );
+
     // pytorch nightly is required for MPS
     if (process.platform === 'darwin') {
       return this.manualInstall(callbacks);
@@ -476,6 +482,13 @@ export class VirtualEnvironment implements HasTelemetry {
   }
 
   async installPytorch(callbacks?: ProcessCallbacks): Promise<void> {
+    useAppState().setInstallStage(
+      createInstallStageInfo(InstallStage.INSTALLING_PYTORCH, {
+        progress: 25,
+        message: 'Installing PyTorch',
+      })
+    );
+
     const torchMirror = this.torchMirror || getDefaultTorchMirror(this.selectedDevice);
     const config: PipInstallConfig = {
       packages: ['torch', 'torchvision', 'torchaudio'],
@@ -494,6 +507,13 @@ export class VirtualEnvironment implements HasTelemetry {
   }
 
   async installComfyUIRequirements(callbacks?: ProcessCallbacks): Promise<void> {
+    useAppState().setInstallStage(
+      createInstallStageInfo(InstallStage.INSTALLING_COMFYUI_REQUIREMENTS, {
+        progress: 45,
+        message: 'Installing ComfyUI requirements',
+      })
+    );
+
     log.info(`Installing ComfyUI requirements from ${this.comfyUIRequirementsPath}`);
     const installCmd = getPipInstallArgs({
       requirementsFile: this.comfyUIRequirementsPath,
@@ -507,6 +527,13 @@ export class VirtualEnvironment implements HasTelemetry {
   }
 
   async installComfyUIManagerRequirements(callbacks?: ProcessCallbacks): Promise<void> {
+    useAppState().setInstallStage(
+      createInstallStageInfo(InstallStage.INSTALLING_MANAGER_REQUIREMENTS, {
+        progress: 60,
+        message: 'Installing ComfyUI Manager requirements',
+      })
+    );
+
     log.info(`Installing ComfyUIManager requirements from ${this.comfyUIManagerRequirementsPath}`);
     const installCmd = getPipInstallArgs({
       requirementsFile: this.comfyUIManagerRequirementsPath,

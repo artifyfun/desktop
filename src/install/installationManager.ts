@@ -1,9 +1,11 @@
 import { Notification, app, dialog, ipcMain, shell } from 'electron';
 import log from 'electron-log/main';
 
-import { IPC_CHANNELS, ProgressStatus } from '../constants';
+import { IPC_CHANNELS, InstallStage, ProgressStatus } from '../constants';
+import { useAppState } from '../main-process/appState';
 import type { AppWindow } from '../main-process/appWindow';
 import { ComfyInstallation } from '../main-process/comfyInstallation';
+import { createInstallStageInfo } from '../main-process/installStages';
 import type { InstallOptions, InstallValidation } from '../preload';
 import { CmCli } from '../services/cmCli';
 import { type HasTelemetry, ITelemetry, trackEvent } from '../services/telemetry';
@@ -84,6 +86,10 @@ export class InstallationManager implements HasTelemetry {
     this.telemetry.track('validation:error_found', { error });
 
     log.info('Validation error - loading maintenance page.');
+    const appState = useAppState();
+    appState.setInstallStage(
+      createInstallStageInfo(InstallStage.MAINTENANCE_MODE, { progress: 90, message: `Validation error: ${error}` })
+    );
     this.appWindow.loadPage('maintenance').catch((error) => {
       log.error('Error loading maintenance page.', error);
       const message = `An error was detected with your installation, and the maintenance page could not be loaded to resolve it. The app will close now. Please reinstall if this issue persists.\n\nError message:\n\n${error}`;
@@ -107,9 +113,11 @@ export class InstallationManager implements HasTelemetry {
   async freshInstall(): Promise<ComfyInstallation> {
     log.info('Starting installation.');
     const config = useDesktopConfig();
+    const appState = useAppState();
     config.set('installState', 'started');
 
     // Check available GPU
+    appState.setInstallStage(createInstallStageInfo(InstallStage.HARDWARE_VALIDATION, { progress: 3 }));
     const hardware = await validateHardware();
     if (typeof hardware.gpu === 'string') config.set('detectedGpu', hardware.gpu);
 
@@ -129,11 +137,13 @@ export class InstallationManager implements HasTelemetry {
       await this.appWindow.loadPage('not-supported');
     } else {
       log.verbose('Loading welcome renderer.');
+      appState.setInstallStage(createInstallStageInfo(InstallStage.WELCOME_SCREEN, { progress: 4 }));
       await this.appWindow.loadPage('welcome');
     }
 
     // Check if git is installed
     log.verbose('Checking if git is installed.');
+    appState.setInstallStage(createInstallStageInfo(InstallStage.GIT_CHECK, { progress: 5 }));
     const gitInstalled = await canExecuteShellCommand('git --version');
     if (!gitInstalled) {
       log.verbose('git not detected in path, loading download-git page.');
@@ -153,6 +163,7 @@ export class InstallationManager implements HasTelemetry {
     }
 
     // Handover to frontend
+    appState.setInstallStage(createInstallStageInfo(InstallStage.INSTALL_OPTIONS_SELECTION, { progress: 6 }));
     const installOptions = await optionsPromise;
     this.telemetry.track('desktop:install_options_received', {
       gpuType: installOptions.device,
@@ -178,10 +189,10 @@ export class InstallationManager implements HasTelemetry {
     }
 
     // Creates folders and initializes ComfyUI settings
+    appState.setInstallStage(createInstallStageInfo(InstallStage.CREATING_DIRECTORIES, { progress: 8 }));
     const installWizard = new InstallWizard(installOptions, this.telemetry);
     await installWizard.install();
 
-    this.appWindow.maximize();
     const shouldMigrateCustomNodes =
       !!installWizard.migrationSource && installWizard.migrationItemIds.has('custom_nodes');
     if (shouldMigrateCustomNodes) {
@@ -205,10 +216,14 @@ export class InstallationManager implements HasTelemetry {
     };
 
     // Create virtual environment
+    appState.setInstallStage(createInstallStageInfo(InstallStage.PYTHON_ENVIRONMENT_SETUP, { progress: 15 }));
     this.appWindow.sendServerStartProgress(ProgressStatus.PYTHON_SETUP);
     await virtualEnvironment.create(processCallbacks);
 
     // Migrate custom nodes
+    if (shouldMigrateCustomNodes) {
+      appState.setInstallStage(createInstallStageInfo(InstallStage.MIGRATING_CUSTOM_NODES, { progress: 75 }));
+    }
     const customNodeMigrationError = await this.migrateCustomNodes(config, virtualEnvironment, processCallbacks);
     if (customNodeMigrationError) {
       // TODO: Replace with IPC callback to handle i18n (SoC).
