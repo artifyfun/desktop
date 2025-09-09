@@ -258,7 +258,8 @@ export class VirtualEnvironment implements HasTelemetry {
 
     try {
       if (await this.exists()) {
-        log.info('Virtual environment already exists at', this.venvPath);
+        log.info('Virtual environment directory already exists: ', this.venvPath);
+
         const requirementsStatus = await this.hasRequirements();
 
         if (requirementsStatus === 'OK') {
@@ -267,6 +268,9 @@ export class VirtualEnvironment implements HasTelemetry {
             reason: 'already_exists',
           });
           return;
+        } else {
+          log.info('Starting manual install - venv missing requirements');
+          return await this.manualInstall(callbacks);
         }
       } else {
         await this.createVenvWithPython(callbacks);
@@ -394,6 +398,21 @@ export class VirtualEnvironment implements HasTelemetry {
       callbacks,
       cwd
     );
+  }
+
+  /**
+   * Runs uv with the virtual environment env var set.
+   * @param args The arguments to pass to uv.
+   * @param callbacks The callbacks to use for the command.
+   * @returns A promise with the exit code and signal.
+   */
+  private async runUvAsync(
+    args: string[],
+    callbacks?: ProcessCallbacks
+  ): Promise<{ exitCode: number | null; signal: NodeJS.Signals | null }> {
+    log.info('Running uv child process: uv', args.join(' '));
+
+    return this.runCommandAsync(this.uvPath, args, { VIRTUAL_ENV: this.venvPath }, callbacks);
   }
 
   /**
@@ -646,7 +665,7 @@ export class VirtualEnvironment implements HasTelemetry {
         onStdout: (data) => (output += data.toString()),
         onStderr: (data) => (output += data.toString()),
       };
-      const result = await this.runCommandAsync(this.uvPath, args, { VIRTUAL_ENV: this.venvPath }, callbacks);
+      const result = await this.runUvAsync(args, callbacks);
 
       if (result.exitCode !== 0)
         throw new Error(`Failed to get packages: Exit code ${result.exitCode}, signal ${result.signal}`);
