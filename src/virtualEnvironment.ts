@@ -2,7 +2,7 @@ import { app } from 'electron';
 import log from 'electron-log/main';
 import pty from 'node-pty';
 import { ChildProcess, spawn } from 'node:child_process';
-import { rm } from 'node:fs/promises';
+import { readdir, rm } from 'node:fs/promises';
 import os, { EOL } from 'node:os';
 import path from 'node:path';
 
@@ -557,8 +557,20 @@ export class VirtualEnvironment implements HasTelemetry {
     }
   }
 
+  /**
+   * Checks if the virtual environment exists.
+   * @returns `true` if the virtual environment exists, otherwise `false`.
+   */
   async exists(): Promise<boolean> {
-    return await pathAccessible(this.venvPath);
+    const pathExists = await pathAccessible(this.venvPath);
+    if (!pathExists) return false;
+
+    try {
+      const entries = await readdir(this.venvPath);
+      return entries.length > 0;
+    } catch {
+      return false;
+    }
   }
 
   /**
