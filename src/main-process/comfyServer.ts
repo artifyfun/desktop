@@ -15,6 +15,9 @@ import { rotateLogFiles } from '../utils';
 import { VirtualEnvironment } from '../virtualEnvironment';
 import { AppWindow } from './appWindow';
 
+/** Known server start errors. */
+type ServerStartError = 'ModuleNotFoundError';
+
 /**
  * A class that manages the ComfyUI server.
  *
@@ -54,6 +57,8 @@ export class ComfyServer implements HasTelemetry {
   timedOutWhilstStarting = false;
 
   private comfyServerProcess: ChildProcess | null = null;
+
+  private lastStdErr?: string;
 
   constructor(
     readonly basePath: string,
@@ -113,6 +118,14 @@ export class ComfyServer implements HasTelemetry {
     return [this.mainScriptPath, ...args];
   }
 
+  /**
+   * Attempts to parse the type of the last error.
+   * @returns The last error type, if it can be parsed.
+   */
+  parseLastError(): ServerStartError | undefined {
+    return this.lastStdErr?.match(/(^|\n)ModuleNotFoundError: /) ? 'ModuleNotFoundError' : undefined;
+  }
+
   @trackEvent('comfyui:server_start')
   async start() {
     if (this.isRunning) {
@@ -138,6 +151,7 @@ export class ComfyServer implements HasTelemetry {
         },
         onStderr: (data) => {
           comfyUILog.error(data);
+          this.lastStdErr = data;
           this.appWindow.send(IPC_CHANNELS.LOG_MESSAGE, data);
         },
       });
