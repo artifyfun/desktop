@@ -2,16 +2,19 @@ import { Notification, app, dialog, ipcMain, shell } from 'electron';
 import log from 'electron-log/main';
 
 import { IPC_CHANNELS, InstallStage, ProgressStatus } from '../constants';
+import { PythonImportVerificationError } from '../infrastructure/pythonImportVerificationError';
 import { useAppState } from '../main-process/appState';
 import type { AppWindow } from '../main-process/appWindow';
 import { ComfyInstallation } from '../main-process/comfyInstallation';
 import { createInstallStageInfo } from '../main-process/installStages';
 import type { InstallOptions, InstallValidation } from '../preload';
 import { CmCli } from '../services/cmCli';
+import { captureSentryException } from '../services/sentry';
 import { type HasTelemetry, ITelemetry, trackEvent } from '../services/telemetry';
 import { type DesktopConfig, useDesktopConfig } from '../store/desktopConfig';
 import { canExecuteShellCommand, validateHardware } from '../utils';
 import type { ProcessCallbacks, VirtualEnvironment } from '../virtualEnvironment';
+import { createProcessCallbacks } from './createProcessCallbacks';
 import { InstallWizard } from './installWizard';
 import { Troubleshooting } from './troubleshooting';
 
@@ -204,21 +207,74 @@ export class InstallationManager implements HasTelemetry {
     const { virtualEnvironment } = installation;
 
     // Virtual terminal output callbacks
-    const processCallbacks: ProcessCallbacks = {
-      onStdout: (data) => {
-        log.info(data);
-        this.appWindow.send(IPC_CHANNELS.LOG_MESSAGE, data);
-      },
-      onStderr: (data) => {
-        log.error(data);
-        this.appWindow.send(IPC_CHANNELS.LOG_MESSAGE, data);
-      },
-    };
+    const processCallbacks = createProcessCallbacks(this.appWindow);
 
     // Create virtual environment
     appState.setInstallStage(createInstallStageInfo(InstallStage.PYTHON_ENVIRONMENT_SETUP, { progress: 15 }));
     this.appWindow.sendServerStartProgress(ProgressStatus.PYTHON_SETUP);
-    await virtualEnvironment.create(processCallbacks);
+
+    try {
+      await virtualEnvironment.create(processCallbacks);
+    } catch (error) {
+      if (error instanceof PythonImportVerificationError) {
+        // Show dialog to user asking if they want to reinstall
+        const result = await this.appWindow.showMessageBox({
+          type: 'warning',
+          title: 'Python Environment Issue',
+          message: `${error.message} Would you like to remove your .venv directory and reinstall it?`,
+          buttons: ['Reinstall venv', 'Ignore'],
+          defaultId: 0,
+          cancelId: 1,
+        });
+
+        if (result.response === 1) {
+          // User chose to ignore the issue
+          log.warn('User chose to ignore python import verification failure');
+          this.telemetry.track('install_flow:virtual_environment_create_error', { reason: 'ignore_venv_issues' });
+        } else {
+          // User chose to reinstall - remove venv and retry
+          log.info('User chose to reinstall venv after import verification failure');
+          await virtualEnvironment.removeVenvDirectory();
+          await virtualEnvironment.create(processCallbacks);
+        }
+      } else {
+        // Send error to Sentry
+        const errorEventName = 'install_flow:virtual_environment_create_fatal';
+        const sentryUrl = captureSentryException(
+          error instanceof Error ? error : new Error(String(error)),
+          errorEventName
+        );
+
+        // Log the error
+        log.error('Fatal error creating virtual environment:', error);
+        this.telemetry.track(errorEventName, {
+          error_name: error instanceof Error ? error.name : 'UnknownError',
+          error_type: error instanceof Error ? error.constructor.name : typeof error,
+          error_message: error instanceof Error ? error.message : 'Unknown error occurred',
+          sentry_url: sentryUrl,
+        });
+
+        // Show friendly error dialog with documentation link
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const result = await dialog.showMessageBox({
+          type: 'error',
+          title: 'Virtual Environment Creation Failed',
+          message: 'Failed to create virtual environment',
+          detail: `ComfyUI Desktop was unable to set up the Python environment required to run.\n\nError details:\n${errorMessage}\n\nWould you like to view the documentation for help with this issue?`,
+          buttons: ['View Documentation', 'Exit'],
+          defaultId: 0,
+          cancelId: 1,
+        });
+
+        // Open documentation if user clicked "View Documentation"
+        if (result.response === 0) {
+          await shell.openExternal('https://docs.comfy.org');
+        }
+
+        // Exit gracefully
+        app.exit(3001);
+      }
+    }
 
     // Migrate custom nodes
     if (shouldMigrateCustomNodes) {
@@ -289,17 +345,10 @@ export class InstallationManager implements HasTelemetry {
 
   @trackEvent('installation_manager:manager_packages_update')
   private async updatePackages(installation: ComfyInstallation) {
-    const sendLogIpc = (data: string) => {
-      log.info(data);
-      this.appWindow.send(IPC_CHANNELS.LOG_MESSAGE, data);
-    };
     await this.appWindow.loadPage('desktop-update');
 
     // Using requirements.txt again here ensures that uv installs the expected packages from the previous step (--dry-run)
-    const callbacks: ProcessCallbacks = {
-      onStdout: sendLogIpc,
-      onStderr: sendLogIpc,
-    };
+    const callbacks = createProcessCallbacks(this.appWindow, { logStderrAsInfo: true });
     try {
       await installation.virtualEnvironment.installComfyUIRequirements(callbacks);
       await installation.virtualEnvironment.installComfyUIManagerRequirements(callbacks);

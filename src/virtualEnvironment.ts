@@ -7,9 +7,11 @@ import os, { EOL } from 'node:os';
 import path from 'node:path';
 
 import { InstallStage, TorchMirrorUrl } from './constants';
+import { PythonImportVerificationError } from './infrastructure/pythonImportVerificationError';
 import { useAppState } from './main-process/appState';
 import { createInstallStageInfo } from './main-process/installStages';
 import type { TorchDeviceType } from './preload';
+import { runPythonImportVerifyScript } from './services/pythonImportVerifier';
 import { captureSentryException } from './services/sentry';
 import { HasTelemetry, ITelemetry, trackEvent } from './services/telemetry';
 import { getDefaultShell, getDefaultShellArgs } from './shell/util';
@@ -19,6 +21,16 @@ export type ProcessCallbacks = {
   onStdout?: (data: string) => void;
   onStderr?: (data: string) => void;
 };
+
+/** An environment that can run Python commands. */
+export interface PythonExecutor {
+  runPythonCommandAsync(
+    args: string[],
+    callbacks?: ProcessCallbacks,
+    env?: NodeJS.ProcessEnv,
+    cwd?: string
+  ): Promise<{ exitCode: number | null }>;
+}
 
 interface PipInstallConfig {
   packages: string[];
@@ -94,7 +106,7 @@ function fixDeviceMirrorMismatch(device: TorchDeviceType, mirror: string | undef
  * Maintains its own node-pty instance; output from this is piped to the virtual terminal.
  * @todo Split either installation or terminal management to a separate class.
  */
-export class VirtualEnvironment implements HasTelemetry {
+export class VirtualEnvironment implements HasTelemetry, PythonExecutor {
   readonly basePath: string;
   readonly venvPath: string;
   readonly pythonVersion: string;
@@ -111,14 +123,22 @@ export class VirtualEnvironment implements HasTelemetry {
   readonly torchMirror?: string;
   uvPty: pty.IPty | undefined;
 
-  /** @todo Refactor to `using` */
-  get uvPtyInstance() {
-    const env = {
-      ...(process.env as Record<string, string>),
+  /** The environment variables to set for uv. */
+  get uvEnv() {
+    return {
       VIRTUAL_ENV: this.venvPath,
       // Empty strings are not valid values for these env vars,
       // dropping them here to avoid passing them to uv.
+      // `node-pty` does not support `undefined`.
       ...(this.pythonMirror ? { UV_PYTHON_INSTALL_MIRROR: this.pythonMirror } : {}),
+    };
+  }
+
+  /** @todo Refactor to `using` */
+  get uvPtyInstance() {
+    const env = {
+      ...process.env,
+      ...this.uvEnv,
     };
 
     if (!this.uvPty) {
@@ -257,6 +277,7 @@ export class VirtualEnvironment implements HasTelemetry {
     }
 
     try {
+      // Gracefully handle existing / partial venvs
       if (await this.exists()) {
         log.info('Virtual environment directory already exists: ', this.venvPath);
 
@@ -264,18 +285,25 @@ export class VirtualEnvironment implements HasTelemetry {
 
         if (requirementsStatus === 'OK') {
           log.info('Skipping requirements installation - all requirements already installed');
-          this.telemetry.track(`install_flow:virtual_environment_create_end`, {
-            reason: 'already_exists',
-          });
-          return;
         } else {
           log.info('Starting manual install - venv missing requirements');
-          return await this.manualInstall(callbacks);
+          await this.manualInstall(callbacks);
         }
-      } else {
-        await this.createVenvWithPython(callbacks);
+
+        // Verify python imports actually work (limited set / common failures)
+        const importsOk = await this.verifyPythonImports();
+        if (importsOk) {
+          this.telemetry.track(`install_flow:virtual_environment_create_end`, { reason: 'already_exists' });
+          return;
+        }
+
+        // Python imports failed
+        throw new PythonImportVerificationError(
+          'We were unable to verify the state of your Python virtual environment. This will likely prevent ComfyUI from starting.'
+        );
       }
 
+      await this.createVenvWithPython(callbacks);
       await this.ensurePip(callbacks);
       await this.installRequirements(callbacks);
       this.telemetry.track('install_flow:virtual_environment_create_end', {
@@ -385,7 +413,7 @@ export class VirtualEnvironment implements HasTelemetry {
   public async runPythonCommandAsync(
     args: string[],
     callbacks?: ProcessCallbacks,
-    env?: Record<string, string>,
+    env?: NodeJS.ProcessEnv,
     cwd?: string
   ): Promise<{ exitCode: number | null }> {
     return this.runCommandAsync(
@@ -412,7 +440,7 @@ export class VirtualEnvironment implements HasTelemetry {
   ): Promise<{ exitCode: number | null; signal: NodeJS.Signals | null }> {
     log.info('Running uv child process: uv', args.join(' '));
 
-    return this.runCommandAsync(this.uvPath, args, { VIRTUAL_ENV: this.venvPath }, callbacks);
+    return this.runCommandAsync(this.uvPath, args, this.uvEnv, callbacks);
   }
 
   /**
@@ -486,7 +514,7 @@ export class VirtualEnvironment implements HasTelemetry {
   private runCommand(
     command: string,
     args: string[],
-    env: Record<string, string>,
+    env: NodeJS.ProcessEnv,
     callbacks?: ProcessCallbacks,
     cwd: string = this.basePath
   ): ChildProcess {
@@ -526,7 +554,7 @@ export class VirtualEnvironment implements HasTelemetry {
   private async runCommandAsync(
     command: string,
     args: string[],
-    env: Record<string, string>,
+    env: NodeJS.ProcessEnv,
     callbacks?: ProcessCallbacks,
     cwd?: string
   ): Promise<{ exitCode: number | null; signal: NodeJS.Signals | null }> {
@@ -728,7 +756,27 @@ export class VirtualEnvironment implements HasTelemetry {
       return 'package-upgrade';
     }
 
-    return coreOk && managerOk ? 'OK' : 'error';
+    const result = coreOk && managerOk ? 'OK' : 'error';
+    log.debug('hasRequirements result:', result);
+    return result;
+  }
+
+  /**
+   * Verifies that the Python environment can import modules that frequently show up in errors.
+   * @returns `true` if the Python environment successfully imports the modules, otherwise `false`.
+   */
+  async verifyPythonImports(): Promise<boolean> {
+    const verification = await runPythonImportVerifyScript(this, [
+      'yaml',
+      'torch',
+      'uv',
+      'toml',
+      'numpy',
+      'PIL',
+      'sqlalchemy',
+    ]);
+
+    return verification.success;
   }
 
   /**

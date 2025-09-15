@@ -1,7 +1,7 @@
 import { app, dialog, ipcMain } from 'electron';
 import log from 'electron-log/main';
 
-import { ProgressStatus } from './constants';
+import { ProgressStatus, type ServerArgs } from './constants';
 import { IPC_CHANNELS } from './constants';
 import { InstallStage } from './constants';
 import { registerAppHandlers } from './handlers/AppHandlers';
@@ -12,6 +12,7 @@ import { registerNetworkHandlers } from './handlers/networkHandlers';
 import { registerPathHandlers } from './handlers/pathHandlers';
 import { FatalError } from './infrastructure/fatalError';
 import type { FatalErrorOptions } from './infrastructure/interfaces';
+import { createProcessCallbacks } from './install/createProcessCallbacks';
 import { InstallationManager } from './install/installationManager';
 import { Troubleshooting } from './install/troubleshooting';
 import type { IAppState } from './main-process/appState';
@@ -103,25 +104,43 @@ export class DesktopApp implements HasTelemetry {
       // Construct core launch args
       const serverArgs = await comfyDesktopApp.buildServerArgs(overrides);
 
-      // Start server
-      if (!overrides.useExternalServer && !comfyDesktopApp.serverRunning) {
-        try {
-          appState.setInstallStage(createInstallStageInfo(InstallStage.STARTING_SERVER));
-          await comfyDesktopApp.startComfyServer(serverArgs);
-        } catch (error) {
-          log.error('Unhandled exception during server start', error);
-          appWindow.send(IPC_CHANNELS.LOG_MESSAGE, `${error}\n`);
-          appWindow.sendServerStartProgress(ProgressStatus.ERROR);
-          appState.setInstallStage(createInstallStageInfo(InstallStage.ERROR, { progress: 0, error: String(error) }));
-          return;
-        }
+      // Short circuit if using external server or server is already running
+      if (overrides.useExternalServer || comfyDesktopApp.serverRunning) {
+        await loadFrontend(serverArgs);
+        return;
       }
-      appWindow.sendServerStartProgress(ProgressStatus.READY);
-      await appWindow.loadComfyUI(serverArgs);
 
-      // App start complete
-      appState.setInstallStage(createInstallStageInfo(InstallStage.READY, { progress: 100 }));
-      appState.emitLoaded();
+      // Start server
+      try {
+        await startComfyServer(comfyDesktopApp, serverArgs);
+        await loadFrontend(serverArgs);
+      } catch (error) {
+        // If there is a module import error, offer to try and recreate the venv.
+        const lastError = comfyDesktopApp.comfyServer?.parseLastError();
+        if (lastError === 'ModuleNotFoundError') {
+          const shouldReinstallVenv = await getUserApprovalToReinstallVenv();
+
+          if (shouldReinstallVenv) {
+            // User chose to reinstall - remove venv and retry
+            log.info('User chose to reinstall venv after import verification failure');
+
+            const { virtualEnvironment } = installation;
+            const removed = await virtualEnvironment.removeVenvDirectory();
+            if (!removed) throw new Error('Failed to remove .venv directory');
+
+            try {
+              await virtualEnvironment.create(createProcessCallbacks(appWindow, { logStderrAsInfo: true }));
+              await startComfyServer(comfyDesktopApp, serverArgs);
+              await loadFrontend(serverArgs);
+              return;
+            } catch (error) {
+              showStartupErrorPage(error);
+            }
+          }
+        }
+
+        showStartupErrorPage(error);
+      }
     } catch (error) {
       log.error('Unhandled exception during app startup', error);
       appState.setInstallStage(createInstallStageInfo(InstallStage.ERROR, { error: String(error) }));
@@ -134,6 +153,58 @@ export class DesktopApp implements HasTelemetry {
         );
         app.quit();
       }
+    }
+
+    /**
+     * Shows a dialog to the user asking if they want to reinstall the venv.
+     * @returns The result of the dialog.
+     */
+    async function getUserApprovalToReinstallVenv(): Promise<boolean> {
+      const { response } = await appWindow.showMessageBox({
+        type: 'error',
+        title: 'Python Environment Issue',
+        message:
+          'Missing Python Module\n\n' +
+          'We were unable to import at least one required Python module.\n\n' +
+          'Would you like to remove and reinstall the venv?',
+        buttons: ['Reset Virtual Environment', 'Ignore'],
+        defaultId: 0,
+        cancelId: 1,
+      });
+      return response === 0;
+    }
+
+    /**
+     * Shows the starting server page and starts the ComfyUI server.
+     * @param comfyDesktopApp The comfy desktop app instance.
+     * @param serverArgs The server args to use to start the server.
+     */
+    async function startComfyServer(comfyDesktopApp: ComfyDesktopApp, serverArgs: ServerArgs): Promise<void> {
+      appState.setInstallStage(createInstallStageInfo(InstallStage.STARTING_SERVER));
+      await comfyDesktopApp.startComfyServer(serverArgs);
+    }
+
+    /**
+     * Loads the frontend and sets the app state to ready.
+     * @param serverArgs The server args to use to load the frontend.
+     */
+    async function loadFrontend(serverArgs: ServerArgs): Promise<void> {
+      appWindow.sendServerStartProgress(ProgressStatus.READY);
+      await appWindow.loadComfyUI(serverArgs);
+
+      appState.setInstallStage(createInstallStageInfo(InstallStage.READY, { progress: 100 }));
+      appState.emitLoaded();
+    }
+
+    /**
+     * Shows the startup error page and sets the app state to error.
+     * @param error The error to show the startup error page for.
+     */
+    function showStartupErrorPage(error: unknown): void {
+      log.error('Unhandled exception during server start', error);
+      appWindow.send(IPC_CHANNELS.LOG_MESSAGE, `${error}\n`);
+      appWindow.sendServerStartProgress(ProgressStatus.ERROR);
+      appState.setInstallStage(createInstallStageInfo(InstallStage.ERROR, { progress: 0, error: String(error) }));
     }
   }
 
