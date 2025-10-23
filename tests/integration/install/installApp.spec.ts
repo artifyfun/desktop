@@ -1,7 +1,7 @@
 import { expect, test } from '../testExtensions';
 
 test.describe('Install App', () => {
-  test('Can install app', async ({ installWizard, installedApp, serverStart, app, window }) => {
+  test('Can install app', async ({ installWizard, installedApp, serverStart, testEnvironment, window }) => {
     test.slow();
 
     await installWizard.clickGetStarted();
@@ -11,15 +11,12 @@ test.describe('Install App', () => {
     await installWizard.clickNext();
 
     // Install to temp dir
-    const { installLocation } = app.testEnvironment;
+    const { installLocation } = testEnvironment;
     await expect(installWizard.installLocationTitle).toBeVisible();
     await installWizard.installLocationInput.fill(installLocation.path);
     await installWizard.clickNext();
 
     // Install stepper screens
-    await expect(installWizard.migrateTitle).toBeVisible();
-    await installWizard.clickNext();
-
     await expect(installWizard.desktopSettingsTitle).toBeVisible();
     await installWizard.installButton.click();
 

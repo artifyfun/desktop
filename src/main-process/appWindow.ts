@@ -6,7 +6,6 @@ import {
   Tray,
   app,
   dialog,
-  ipcMain,
   nativeTheme,
   screen,
   shell,
@@ -19,6 +18,7 @@ import { URL } from 'node:url';
 
 import { ElectronError } from '@/infrastructure/electronError';
 import type { Page } from '@/infrastructure/interfaces';
+import { strictIpcMain as ipcMain } from '@/infrastructure/ipcChannels';
 import { type IAppState, useAppState } from '@/main-process/appState';
 import { clamp } from '@/utils';
 
@@ -51,12 +51,14 @@ export class AppWindow {
   public readonly customWindowEnabled: boolean =
     process.platform !== 'darwin' && useDesktopConfig().get('windowStyle') === 'custom';
 
-  /** Always returns `undefined` in production. When running unpackaged, returns `DEV_SERVER_URL` if set, otherwise `undefined`. */
-  private get devUrlOverride() {
-    if (!app.isPackaged) return process.env.DEV_SERVER_URL;
-  }
-
-  public constructor() {
+  public constructor(
+    /** The URL of the development server for the Desktop UI. */
+    private readonly devUrlOverride: string | undefined,
+    /** The URL of the ComfyUI development server (main app). */
+    private readonly frontendUrlOverride: string | undefined,
+    /** Whether to automatically open dev tools on app start. */
+    private readonly autoOpenDevTools: boolean
+  ) {
     const installed = useDesktopConfig().get('installState') === 'installed';
     const { workAreaSize } = screen.getPrimaryDisplay();
     const { width, height } = installed ? workAreaSize : { width: 1024, height: 768 };
@@ -131,6 +133,7 @@ export class AppWindow {
   }
 
   public send(channel: string, data: unknown): void {
+    if (this.window.isDestroyed()) return;
     if (!this.isReady()) {
       this.messageQueue.push({ channel, data });
       return;
@@ -161,7 +164,7 @@ export class AppWindow {
 
   public async loadComfyUI(serverArgs: ServerArgs) {
     const host = serverArgs.listen === '0.0.0.0' ? 'localhost' : serverArgs.listen;
-    const url = this.devUrlOverride ?? `http://${host}:${serverArgs.port}`;
+    const url = this.frontendUrlOverride ?? `http://${host}:${serverArgs.port}`;
     await this.window.loadURL(url);
   }
 
@@ -216,9 +219,8 @@ export class AppWindow {
   public async loadPage(page: Page): Promise<void> {
     this.appState.currentPage = page;
 
-    const { devUrlOverride } = this;
-    if (devUrlOverride) {
-      const url = `${devUrlOverride}/${page}`;
+    if (this.devUrlOverride) {
+      const url = `${this.devUrlOverride}/${page}`;
       /**
        * rendererReady should be set by the frontend via electronAPI. However,
        * for some reason, the event is not being received if we load the app
@@ -227,14 +229,14 @@ export class AppWindow {
        */
       this.rendererReady = true;
       log.info(`Loading development server ${url}`);
-      if (process.env.DEV_TOOLS_AUTO === 'true') this.window.webContents.openDevTools();
+      if (this.autoOpenDevTools) this.window.webContents.openDevTools();
       await this.window.loadURL(url);
     } else {
       // TODO: Remove this temporary workaround when RENDERER_READY is reworked.
       if (page === 'maintenance') this.rendererReady = true;
 
       const appResourcesPath = getAppResourcesPath();
-      const frontendPath = path.join(appResourcesPath, 'ComfyUI', 'web_custom_versions', 'desktop_app');
+      const frontendPath = path.join(appResourcesPath, 'desktop-ui');
       try {
         await this.window.loadFile(path.join(frontendPath, 'index.html'), { hash: page });
       } catch (error) {
@@ -316,6 +318,8 @@ export class AppWindow {
       256,
       { leading: true, trailing: true }
     );
+
+    updateBounds();
 
     this.window.on('resize', updateBounds);
     this.window.on('move', updateBounds);

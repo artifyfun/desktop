@@ -3,7 +3,7 @@
   "productName": "ComfyUI",
   "repository": "github:comfy-org/electron",
   "copyright": "Copyright © 2024 Comfy Org",
-  "version": "0.4.72",
+  "version": "0.5.3",
   "homepage": "https://comfy.org",
   "description": "The best modular GUI to run AI diffusion models.",
   "main": ".vite/build/main.cjs",
@@ -11,11 +11,11 @@
   "type": "module",
   "config": {
     "frontend": {
-      "version": "1.25.11",
+      "version": "1.28.7",
       "optionalBranch": ""
     },
     "comfyUI": {
-      "version": "0.3.59",
+      "version": "0.3.66",
       "optionalBranch": ""
     },
     "managerCommit": "d82e1f5d677fec0b85a6be6beb1e32d5627ef6af",
@@ -30,11 +30,12 @@
     "download:uv": "node scripts/downloadUV.js",
     "download-frontend": "node scripts/downloadFrontend.js",
     "make:frontend": "yarn run download-frontend",
-    "format": "prettier --write --cache --log-level warn .",
-    "format:check": "prettier --check --log-level warn .",
+    "format": "prettier --write --cache --list-different .",
+    "format:check": "prettier --check .",
     "lint": "eslint --fix --cache src",
     "lint:check": "eslint --max-warnings 0 src",
     "make": "yarn run vite:compile && electron-builder build --config=builder-debug.config.ts && yarn run verify:build",
+    "make:nsis": "electron-builder build --config=builder-debug.config.ts --win nsis --prepackaged ./dist/win-unpacked",
     "make:assets": "node scripts/makeComfy.js",
     "make:nvidia": "yarn run make -- --nvidia",
     "notarize": "node debug/notarize.js",
@@ -103,6 +104,7 @@
   },
   "license": "GPL-3.0-only",
   "dependencies": {
+    "@comfyorg/desktop-ui": "^0.0.3",
     "@sentry/electron": "^5.4.0",
     "@sentry/vite-plugin": "^2.22.6",
     "@todesktop/runtime": "^1.6.4",

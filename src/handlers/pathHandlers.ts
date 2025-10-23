@@ -1,8 +1,10 @@
-import { app, dialog, ipcMain, shell } from 'electron';
+import { app, dialog, shell } from 'electron';
 import log from 'electron-log/main';
 import fs from 'node:fs';
 import path from 'node:path';
 import si from 'systeminformation';
+
+import { strictIpcMain as ipcMain } from '@/infrastructure/ipcChannels';
 
 import { ComfyConfigManager } from '../config/comfyConfigManager';
 import { ComfyServerConfig } from '../config/comfyServerConfig';
@@ -71,13 +73,14 @@ export function registerPathHandlers() {
   ipcMain.handle(
     IPC_CHANNELS.VALIDATE_INSTALL_PATH,
     async (event, inputPath: string, bypassSpaceCheck = false): Promise<PathValidationResult> => {
+      log.verbose('Handling VALIDATE_INSTALL_PATH: inputPath: [', inputPath, '] bypassSpaceCheck: ', bypassSpaceCheck);
       // Determine required space based on OS
       const requiredSpace = process.platform === 'darwin' ? MAC_REQUIRED_SPACE : WIN_REQUIRED_SPACE;
 
       const result: PathValidationResult = {
         isValid: true,
         freeSpace: -1,
-        requiredSpace: requiredSpace,
+        requiredSpace,
         isOneDrive: false,
         isNonDefaultDrive: false,
         parentMissing: false,
@@ -93,8 +96,7 @@ export function registerPathHandlers() {
             const normalizedInput = path.resolve(inputPath).toLowerCase();
             const normalizedOneDrive = path.resolve(OneDrive).toLowerCase();
             // Check if the normalized OneDrive path is a parent of the input path
-            process.stdout.write(`normalizedInput: ${normalizedInput}\n`);
-            process.stdout.write(`normalizedOneDrive: ${normalizedOneDrive}\n`);
+            log.verbose('normalizedInput [', normalizedInput, ']', 'normalizedOneDrive [', normalizedOneDrive, ']');
             if (normalizedInput.startsWith(normalizedOneDrive)) {
               result.isOneDrive = true;
             }
@@ -102,6 +104,7 @@ export function registerPathHandlers() {
 
           // Check if path is on non-default drive
           const systemDrive = process.env.SystemDrive || 'C:';
+          log.verbose('systemDrive [', systemDrive, ']');
           if (!inputPath.toUpperCase().startsWith(systemDrive)) {
             result.isNonDefaultDrive = true;
           }
@@ -132,8 +135,15 @@ export function registerPathHandlers() {
 
         // Check available disk space
         const disks = await si.fsSize();
-        const disk = disks.find((disk) => inputPath.startsWith(disk.mount));
-        if (disk) result.freeSpace = disk.available;
+        if (disks.length) {
+          log.verbose('SystemInformation [fsSize]:', disks);
+          const disk = disks.find((disk) => inputPath.startsWith(disk.mount));
+          log.verbose('SystemInformation [disk]:', disk);
+          if (disk) result.freeSpace = disk.available;
+        } else {
+          log.warn('SystemInformation [fsSize] is undefined. Skipping disk space check.');
+          result.freeSpace = result.requiredSpace;
+        }
       } catch (error) {
         log.error('Error validating install path:', error);
         result.error = `${error}`;
@@ -147,6 +157,8 @@ export function registerPathHandlers() {
         result.isOneDrive
           ? false
           : true;
+
+      log.verbose('VALIDATE_INSTALL_PATH [result]: ', result);
       return result;
     }
   );
