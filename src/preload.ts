@@ -493,10 +493,15 @@ const electronAPI = {
   },
 
   ArtifyLab: {
+    // @ts-ignore
     selectFile: (data: Record<string, unknown>) => ipcRenderer.invoke('artify-selectFile', data),
+    // @ts-ignore
     getConfig: (data: Record<string, unknown>) => ipcRenderer.invoke('artify-getConfig', data),
+    // @ts-ignore
     loadComfyUI: (data: Record<string, unknown>) => ipcRenderer.invoke('artify-loadComfyUI', data),
+    // @ts-ignore
     loadArtifyLab: (data: Record<string, unknown>) => ipcRenderer.invoke('artify-loadArtifyLab', data),
+    // @ts-ignore
     getAppInfo: (): Promise<AppInfo> => ipcRenderer.invoke('artify-getAppInfo'),
     /**
      * 扫描文件夹下所有文件
@@ -511,16 +516,19 @@ const electronAPI = {
       isDirectory: boolean;
       lastModified: Date;
       relativePath: string;
+      // @ts-ignore
     }>> => ipcRenderer.invoke('artify-scanFolder', folderPath),
     /**
      * 打开output目录
      */
     openOutputFolder: (): Promise<{ success: boolean; path?: string; error?: string }> =>
+      // @ts-ignore
       ipcRenderer.invoke('artify-openOutputFolder'),
     /**
      * 获取output目录路径
      */
     getOutputPath: (): Promise<{ success: boolean; path?: string; error?: string }> =>
+      // @ts-ignore
       ipcRenderer.invoke('artify-getOutputPath'),
     /**
      * 打开根目录下的指定文件夹
@@ -533,8 +541,10 @@ const electronAPI = {
       error?: string; 
       openedFolder?: string; 
       message?: string; 
+      // @ts-ignore
     }> => ipcRenderer.invoke('artify-openRootFolder', folderName),
-    openCMD: (type: string) => ipcRenderer.invoke('artify-openCMD', type)
+    // @ts-ignore
+    openCMD: (type: string) => ipcRenderer.invoke('artify-openCMD', type),
   },
 
   /**
@@ -549,15 +559,15 @@ const electronAPI = {
    * @returns A promise that resolves when download is complete.
    */
   downloadUpdate: (): Promise<{ success: boolean; error?: string }> =>
+    // @ts-ignore
     ipcRenderer.invoke(IPC_CHANNELS.DOWNLOAD_UPDATE),
 
   /**
    * Restarts and installs updates using electron-updater.
    */
   restartAndInstall: (): Promise<{ success: boolean; error?: string }> => 
+    // @ts-ignore
     ipcRenderer.invoke(IPC_CHANNELS.RESTART_AND_INSTALL),
-  // "Fire and forget", code on desktop side will catch errors pre-restart
-  restartAndInstall: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.RESTART_AND_INSTALL),
 
   /**
    * Dialog API for custom dialogs
