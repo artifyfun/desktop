@@ -22,6 +22,7 @@ const config: Configuration = {
   ],
   extraResources: [
     { from: './assets/ComfyUI', to: 'ComfyUI' },
+    { from: './assets/desktop-ui', to: 'desktop-ui' },
     { from: './assets/uv', to: 'uv' },
     { from: './assets/UI', to: 'UI' },
     { from: './assets/requirements', to: 'requirements' },

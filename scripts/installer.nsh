@@ -5,7 +5,7 @@
 !include 'WinMessages.nsh'
 
 # Define allowToChangeInstallationDirectory to show the directory page
-!define allowToChangeInstallationDirectory
+#!define allowToChangeInstallationDirectory
 
 # Per-user install
 !macro customInstallMode
@@ -139,15 +139,9 @@
   !insertmacro customUnInstallCheckCommon
 !macroend
 
-!macro customRemoveFiles
-  ${ifNot} ${isUpdated}
-    ClearErrors
-    FileOpen $0 "$APPDATA\Artify\extra_models_config.yaml" r
-    var /global line
-    var /global lineLength
-    var /global prefix
-    var /global prefixLength
-    var /global prefixFirstLetter
+################################################################################
+# Uninstall - Config / Functions
+################################################################################
 
 # Resolve basePath at uninstaller startup
 !macro customUnInit
@@ -283,8 +277,278 @@
     Pop $0
   FunctionEnd
 
-    FileClose $0
-    Delete "$APPDATA\Artify\extra_models_config.yaml"
-    Delete "$APPDATA\Artify\config.json"
+  Function un.PresetFull_OnClick
+    Pop $0
+    Push 0
+    Call un.SetCheckboxesVisible
+    ${NSD_SetText} $descLabel "${DESC_STANDARD}"
+  FunctionEnd
+
+  Function un.PresetCustom_OnClick
+    Pop $0
+    Push 1
+    Call un.SetCheckboxesVisible
+    ${NSD_SetText} $descLabel "Custom: Choose the specific components to remove."
+  FunctionEnd
+
+  Function un.Desc_ComfyData
+    Pop $0
+    ${NSD_SetText} $descLabel "Removes %APPDATA%\ComfyUI (log files, settings exclusive to the desktop app)."
+  FunctionEnd
+
+  Function un.Desc_Venv
+    Pop $0
+    ${NSD_SetText} $descLabel "Removes the Python virtual environment (.venv) used by the desktop app."
+  FunctionEnd
+
+  Function un.Desc_UpdateCache
+    Pop $0
+    ${NSD_SetText} $descLabel "Removes cached installer and updater files in Local AppData."
+  FunctionEnd
+
+  Function un.Desc_ResetSettings
+    Pop $0
+    ${NSD_SetText} $descLabel "Removes the ComfyUI settings file (comfy.settings.json), resetting in-app settings."
+  FunctionEnd
+
+  Function un.Desc_BasePath
+    Pop $0
+    ${NSD_SetText} $descLabel "Removes the entire ComfyUI Path directory (use with caution)."
+  FunctionEnd
+
+  Function un.ExtraUninstallPage_Leave
+    # If Full preset selected, apply selections on leave
+    ${NSD_GetState} $radioRemoveStandard $1
+    ${If} $1 == 1
+      ${NSD_SetState} $chkDeleteComfyUI 1
+      ${NSD_SetState} $chkDeleteVenv 1
+      ${NSD_SetState} $chkDeleteUpdateCache 1
+      ${NSD_SetState} $chkResetSettings 0
+      ${NSD_SetState} $chkDeleteBasePath 0
+    ${EndIf}
+
+    ${NSD_GetState} $chkDeleteComfyUI $0
+    ${If} $0 == 1
+      StrCpy $isDeleteComfyUI "1"
+    ${Else}
+      StrCpy $isDeleteComfyUI "0"
+    ${EndIf}
+
+    ${NSD_GetState} $chkDeleteVenv $0
+    ${If} $0 == 1
+      StrCpy $isDeleteVenv "1"
+    ${Else}
+      StrCpy $isDeleteVenv "0"
+    ${EndIf}
+
+    ${NSD_GetState} $chkDeleteBasePath $0
+    ${If} $0 == 1
+      StrCpy $isDeleteBasePath "1"
+    ${Else}
+      StrCpy $isDeleteBasePath "0"
+    ${EndIf}
+
+    ${NSD_GetState} $chkDeleteUpdateCache $0
+    ${If} $0 == 1
+      StrCpy $isDeleteUpdateCache "1"
+    ${Else}
+      StrCpy $isDeleteUpdateCache "0"
+    ${EndIf}
+
+    ${NSD_GetState} $chkResetSettings $0
+    ${If} $0 == 1
+      StrCpy $isResetSettings "1"
+    ${Else}
+      StrCpy $isResetSettings "0"
+    ${EndIf}
+  FunctionEnd
+  
+  # Confirmation page after options (only shown if base_path is selected)
+  Function un.ConfirmDeleteBasePath_Create
+    ${IfNot} $isDeleteBasePath == "1"
+      Abort
+    ${EndIf}
+    nsDialogs::Create 1018
+    Pop $0
+    ${If} $0 == error
+      Abort
+    ${EndIf}
+
+    # Warning title
+    ${NSD_CreateLabel} 0 0 100% 24u "Are you sure?"
+    Pop $1
+    # Create bold 16pt font and apply to first label
+    System::Call 'gdi32::CreateFont(i -16, i 0, i 0, i 0, i 700, i 0, i 0, i 0, i 0, i 0, i 0, i 0, t "MS Shell Dlg") p .r9'
+    SendMessage $1 ${WM_SETFONT} $9 1
+
+    ${NSD_CreateLabel} 0 24u 100% 24u "This will PERMANENTLY delete the folder below. It is used to store models, LoRAs inputs, outputs, and other data."
+    ${NSD_CreateLabel} 0 48u 100% 24u "$basePath"
+    Pop $2
+    # Create bold 10pt font and apply to first label
+    System::Call 'gdi32::CreateFont(i -12, i 0, i 0, i 0, i 700, i 0, i 0, i 0, i 0, i 0, i 0, i 0, t "MS Shell Dlg") p .r9'
+    SendMessage $2 ${WM_SETFONT} $9 1
+
+    ${NSD_CreateCheckBox} 0 72u 100% 12u "${LABEL_CONFIRM_DELETE}"
+    Pop $confirmCheckbox
+
+    nsDialogs::Show
+  FunctionEnd
+
+  Function un.ConfirmDeleteBasePath_Leave
+    ${NSD_GetState} $confirmCheckbox $0
+    ${IfNot} $0 == 1
+      StrCpy $isDeleteBasePath "0"
+    ${EndIf}
+  FunctionEnd
+
+  # Resolve $basePath from $APPDATA\ComfyUI\config.json (sets empty if not found)
+  Function un.ResolveBasePath
+    StrCpy $basePath ""
+    ClearErrors
+    FileOpen $0 "$APPDATA\ComfyUI\config.json" r
+    IfErrors done
+
+    StrCpy $1 "basePath"
+    StrLen $2 $1
+
+    loop:
+      FileRead $0 $3
+      IfErrors close
+
+      # scan for "basePath"
+      StrCpy $R2 -1
+      scan:
+        IntOp $R2 $R2 + 1
+        StrCpy $R3 $3 1 $R2
+        StrCmp $R3 "" loop
+        StrCmp $R3 '"' check_key
+        Goto scan
+
+      check_key:
+        IntOp $R4 $R2 + 1
+        StrCpy $R5 $3 $2 $R4
+        StrCmp $R5 $1 next_quote scan
+
+      next_quote:
+        IntOp $R6 $R4 + $2
+        StrCpy $R7 $3 1 $R6
+        StrCmp $R7 '"' find_colon scan
+
+      find_colon:
+        IntOp $R8 $R6 + 1
+        find_colon_loop:
+          StrCpy $R7 $3 1 $R8
+          StrCmp $R7 ":" after_colon
+          StrCmp $R7 "" loop
+          IntOp $R8 $R8 + 1
+          Goto find_colon_loop
+
+      after_colon:
+        IntOp $R9 $R8 + 1
+        find_open_quote:
+          StrCpy $R7 $3 1 $R9
+          StrCmp $R7 '"' open_ok
+          StrCmp $R7 "" loop
+          IntOp $R9 $R9 + 1
+          Goto find_open_quote
+
+      open_ok:
+        IntOp $R0 $R9 + 1
+        find_close_quote:
+          StrCpy $R7 $3 1 $R0
+          StrCmp $R7 '"' got_value
+          StrCmp $R7 "" loop
+          IntOp $R0 $R0 + 1
+          Goto find_close_quote
+
+      got_value:
+        IntOp $R1 $R0 - $R9
+        IntOp $R1 $R1 - 1
+        IntOp $R6 $R9 + 1
+        StrCpy $basePath $3 $R1 $R6
+        # Normalize JSON doubled backslashes to single backslashes
+        ${UnStrRep} $basePath $basePath "\\" "\"
+        Goto close
+
+    close:
+      FileClose $0
+    done:
+  FunctionEnd
+!endif
+
+################################################################################
+# Uninstall - Excute
+################################################################################
+
+!macro customRemoveFiles
+  ${if} ${isUpdated}
+    # App is updating, rather than uninstalling
+  
+    # START Default electron-builder behaviour
+    CreateDirectory "$PLUGINSDIR\old-install"
+
+    Push ""
+    Call un.atomicRMDir
+    Pop $R0
+
+    ${if} $R0 != 0
+      DetailPrint "File is busy, aborting: $R0"
+
+      # Attempt to restore previous directory
+      Push ""
+      Call un.restoreFiles
+      Pop $R0
+
+      Abort `Can't rename "$INSTDIR" to "$PLUGINSDIR\old-install".`
+    ${endif}
+    # END Default electron-builder behaviour
+  ${else}
+    # Manually uninstalling the app
+    Call un.ResolveBasePath
+
+    ${if} $basePath != ""
+      ${if} $isDeleteBasePath == "1"
+        !insertmacro RMDIR_LOGGED "$basePath" "ComfyUI data path (models, output, etc)"
+      ${else}
+        ${if} $isDeleteVenv == "1"
+          StrCpy $4 "$basePath\.venv"
+          !insertmacro RMDIR_LOGGED "$4" "Python virtual environment"
+        ${endIf}
+
+        StrCpy $5 "$basePath\uv-cache"
+        !insertmacro RMDIR_LOGGED "$5" "Legacy package cache"
+
+        ${if} $isResetSettings == "1"
+          StrCpy $6 "$basePath\user\default\comfy.settings.json"
+          DetailPrint "Removing user preferences: $6"
+          Delete "$6"
+        ${endIf}
+      ${endIf}
+    ${endIf}
+
+    ${if} $isDeleteComfyUI == "1"
+      # Use built-in electron-builder app data removal
+      !define DELETE_APP_DATA_ON_UNINSTALL "1"
+    ${endIf}
+
+    ${if} $isDeleteUpdateCache == "1"
+      ${if} $installMode == "all"
+        SetShellVarContext current
+      ${endif}
+
+      StrCpy $R5 "$LOCALAPPDATA\@comfyorgcomfyui-electron-updater"
+      !insertmacro RMDIR_LOGGED "$R5" "Updater cache"
+      ${if} $installMode == "all"
+        SetShellVarContext all
+      ${endif}
+    ${endIf}
+
+    # Attempt to remove install dir if empty
+    ClearErrors
+    RMDir $INSTDIR
+    IfErrors +3 0
+    DetailPrint "Removed install dir: $INSTDIR"
+    Goto +2
+    DetailPrint "Install dir not empty; leaving in place."
   ${endIf}
 !macroend
