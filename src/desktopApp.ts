@@ -1,8 +1,9 @@
-import { app, dialog, ipcMain } from 'electron';
+import { app, dialog } from 'electron';
 import log from 'electron-log/main';
 
 import artifyLab from './artifylab';
 import { registerArtifyHandlers } from './artifylab/handlers';
+import { strictIpcMain as ipcMain } from '@/infrastructure/ipcChannels';
 
 import { ProgressStatus, type ServerArgs } from './constants';
 import { IPC_CHANNELS } from './constants';
@@ -32,7 +33,7 @@ import { DesktopConfig } from './store/desktopConfig';
 export class DesktopApp implements HasTelemetry {
   readonly telemetry: ITelemetry = getTelemetry();
   readonly appState: IAppState = useAppState();
-  readonly appWindow: AppWindow = new AppWindow();
+  readonly appWindow: AppWindow;
 
   comfyDesktopApp?: ComfyDesktopApp;
   installation?: ComfyInstallation;
@@ -40,7 +41,13 @@ export class DesktopApp implements HasTelemetry {
   constructor(
     private readonly overrides: DevOverrides,
     private readonly config: DesktopConfig
-  ) {}
+  ) {
+    this.appWindow = new AppWindow(
+      overrides.DEV_SERVER_URL,
+      overrides.DEV_FRONTEND_URL,
+      overrides.DEV_TOOLS_AUTO === 'true'
+    );
+  }
 
   /** Load start screen - basic spinner */
   async showLoadingPage() {
@@ -249,6 +256,7 @@ export class DesktopApp implements HasTelemetry {
       if (!this.appState.loaded) {
         await this.appWindow.loadPage('maintenance');
       }
+      // @ts-expect-error API says this should return false; always treated as falsy.
       await new Promise((resolve) => ipcMain.handleOnce(IPC_CHANNELS.COMPLETE_VALIDATION, resolve));
     } catch (error) {
       DesktopApp.fatalError({

@@ -1,5 +1,7 @@
-import { app, dialog, ipcMain } from 'electron';
+import { app, dialog } from 'electron';
 import log from 'electron-log/main';
+
+import { strictIpcMain as ipcMain } from '@/infrastructure/ipcChannels';
 
 import { IPC_CHANNELS } from '../constants';
 

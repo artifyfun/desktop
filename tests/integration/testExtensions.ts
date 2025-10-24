@@ -4,6 +4,7 @@ import { env } from 'node:process';
 import { pathExists } from 'tests/shared/utils';
 
 import { TestApp } from './testApp';
+import { TestEnvironment } from './testEnvironment';
 import { TestGraphCanvas } from './testGraphCanvas';
 import { TestInstallWizard } from './testInstallWizard';
 import { TestInstalledApp } from './testInstalledApp';
@@ -15,7 +16,9 @@ export { expect } from '@playwright/test';
 export function assertPlaywrightEnabled() {
   if (env.CI || env.COMFYUI_ENABLE_VOLATILE_TESTS === '1') return;
 
-  throw new Error('COMFYUI_ENABLE_VOLATILE_TESTS must be set to "1"  to run tests.');
+  throw new Error(
+    'COMFYUI_ENABLE_VOLATILE_TESTS must be set to "1"  to run tests. WARNING: THIS SETTING DESTROYS DATA.'
+  );
 }
 
 async function attachIfExists(testInfo: TestInfo, fullPath: string) {
@@ -32,6 +35,8 @@ export interface DesktopTestOptions {
 interface DesktopTestFixtures {
   /** Test app - represents the electron executable. */
   app: TestApp;
+  /** The test environment - direct access to config files, venv, etc. */
+  testEnvironment: TestEnvironment;
   /** The main window of the app. A normal Playwright page. */
   window: Page;
   /** The desktop troubleshooting screen. */
@@ -53,19 +58,21 @@ export const test = baseTest.extend<DesktopTestOptions & DesktopTestFixtures>({
   disposeTestEnvironment: [false, { option: true }],
 
   // Fixtures
-  app: async ({ disposeTestEnvironment }, use, testInfo) => {
+  app: async ({ testEnvironment }, use, testInfo) => {
     // Launch Electron app.
     await using app = await TestApp.create(testInfo);
-    app.shouldDisposeTestEnvironment = disposeTestEnvironment;
     await use(app);
 
     // Attach logs after test
-    const testEnv = app.testEnvironment;
-    await attachIfExists(testInfo, testEnv.mainLogPath);
-    await attachIfExists(testInfo, testEnv.comfyuiLogPath);
+    await attachIfExists(testInfo, testEnvironment.mainLogPath);
+    await attachIfExists(testInfo, testEnvironment.comfyuiLogPath);
 
     // Delete logs if present
-    await testEnv.deleteLogsIfPresent();
+    await testEnvironment.deleteLogsIfPresent();
+  },
+  testEnvironment: async ({ disposeTestEnvironment }, use) => {
+    await using testEnvironment = new TestEnvironment(disposeTestEnvironment);
+    await use(testEnvironment);
   },
   window: async ({ app }, use, testInfo) => {
     const window = await app.firstWindow();

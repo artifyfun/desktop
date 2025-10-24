@@ -1,7 +1,8 @@
-import { app, ipcMain } from 'electron';
+import { app } from 'electron';
 import log from 'electron-log/main';
 
 import { useComfySettings } from '@/config/comfySettings';
+import { strictIpcMain as ipcMain } from '@/infrastructure/ipcChannels';
 
 import { DEFAULT_SERVER_ARGS, IPC_CHANNELS, ProgressStatus, ServerArgs } from '../constants';
 import { DownloadManager } from '../models/DownloadManager';
@@ -140,6 +141,7 @@ export class ComfyDesktopApp implements HasTelemetry {
     });
 
     ipcMain.removeHandler(IPC_CHANNELS.TERMINAL_RESTORE);
+    // @ts-expect-error Returning undefined is an error and will throw in frontend component lifecycle.
     ipcMain.handle(IPC_CHANNELS.TERMINAL_RESTORE, () => {
       return this.terminal?.restore();
     });
