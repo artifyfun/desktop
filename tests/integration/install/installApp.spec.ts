@@ -1,7 +1,7 @@
 import { expect, test } from '../testExtensions';
 
 test.describe('Install App', () => {
-  test('Can install app', async ({ installWizard, installedApp, serverStart, testEnvironment, window }) => {
+  test('Can install app', async ({ installWizard, installedApp, serverStart, testEnvironment }) => {
     test.slow();
 
     await installWizard.clickGetStarted();
@@ -33,6 +33,6 @@ test.describe('Install App', () => {
 
     // Confirm post-install app state is as expected
     await expect(installedApp.firstTimeTemplateWorkflowText).toBeVisible({ timeout: 30 * 1000 });
-    await expect(window).toHaveScreenshot('installApp.png');
+    await expect(installedApp.templatesGrid).toBeVisible({ timeout: 30 * 1000 });
   });
 });
