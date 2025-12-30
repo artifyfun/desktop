@@ -29,12 +29,17 @@ if (frontend.optionalBranch) {
   try {
     execAndLog(`git clone ${frontendRepo} --depth 1 --branch ${frontend.optionalBranch} ${frontendDir}`);
     execAndLog(`pnpm install --frozen-lockfile`, frontendDir, { COREPACK_ENABLE_STRICT: '0' });
-    execAndLog(`pnpm run build`, frontendDir, { COREPACK_ENABLE_STRICT: '0', DISTRIBUTION: 'desktop' });
+    // Run the build directly to avoid test-only typecheck failures.
+    execAndLog(`pnpm exec nx build`, frontendDir, {
+      COREPACK_ENABLE_STRICT: '0',
+      DISTRIBUTION: 'desktop',
+      NODE_OPTIONS: '--max-old-space-size=8192',
+    });
     await fs.mkdir('assets/ComfyUI/web_custom_versions/desktop_app', { recursive: true });
     await fs.cp(path.join(frontendDir, 'dist'), 'assets/ComfyUI/web_custom_versions/desktop_app', { recursive: true });
     await fs.rm(frontendDir, { recursive: true });
   } catch (error) {
-    console.error('Error building frontend:', error.message);
+    console.error('Error building frontend:', error instanceof Error ? error.message : String(error));
     process.exit(1);
   }
 
@@ -45,12 +50,42 @@ if (frontend.optionalBranch) {
    * @param {Record<string, string>} env Additional environment variables.
    */
   function execAndLog(command, cwd, env = {}) {
-    const output = execSync(command, {
-      cwd,
-      encoding: 'utf8',
-      env: { ...process.env, ...env },
-    });
-    console.log(output);
+    try {
+      const output = execSync(command, {
+        cwd,
+        encoding: 'utf8',
+        env: { ...process.env, ...env },
+      });
+      console.log(output);
+    } catch (error) {
+      console.error(`Command failed: ${command}`);
+      logExecErrorOutput(error);
+      throw error;
+    }
+  }
+
+  /**
+   * Log stdout/stderr for exec failures when available.
+   * @param {unknown} error The error thrown by execSync.
+   */
+  function logExecErrorOutput(error) {
+    if (!error || typeof error !== 'object') {
+      return;
+    }
+
+    const execError = /** @type {{ stdout?: { toString?: () => string }, stderr?: { toString?: () => string } }} */ (
+      error
+    );
+    const stdoutText = execError.stdout?.toString?.();
+    const stderrText = execError.stderr?.toString?.();
+
+    if (stdoutText) {
+      console.error(stdoutText);
+    }
+
+    if (stderrText) {
+      console.error(stderrText);
+    }
   }
 } else {
   // Download normal frontend release zip
