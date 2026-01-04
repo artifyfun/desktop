@@ -7,7 +7,7 @@ import { readdir, rm } from 'node:fs/promises';
 import os, { EOL } from 'node:os';
 import path from 'node:path';
 
-import { InstallStage, TorchMirrorUrl } from './constants';
+import { AMD_ROCM_SDK_PACKAGES, AMD_TORCH_PACKAGES, InstallStage, TorchMirrorUrl } from './constants';
 import { PythonImportVerificationError } from './infrastructure/pythonImportVerificationError';
 import { useAppState } from './main-process/appState';
 import { createInstallStageInfo } from './main-process/installStages';
@@ -233,7 +233,9 @@ export class VirtualEnvironment implements HasTelemetry, PythonExecutor {
     function compiledRequirements() {
       if (process.platform === 'darwin') return 'macos';
       if (process.platform === 'win32') {
-        return selectedDevice === 'cpu' ? 'windows_cpu' : 'windows_nvidia';
+        if (selectedDevice === 'cpu') return 'windows_cpu';
+        if (selectedDevice === 'amd') return 'windows_amd';
+        return 'windows_nvidia';
       }
     }
   }
@@ -604,6 +606,12 @@ export class VirtualEnvironment implements HasTelemetry, PythonExecutor {
       })
     );
 
+    if (this.selectedDevice === 'amd') {
+      await this.installAmdRocmSdk(callbacks);
+      await this.installAmdTorch(callbacks);
+      return;
+    }
+
     const torchMirror = this.torchMirror || getDefaultTorchMirror(this.selectedDevice);
     const config: PipInstallConfig = {
       packages: ['torch', 'torchvision', 'torchaudio'],
@@ -618,6 +626,46 @@ export class VirtualEnvironment implements HasTelemetry, PythonExecutor {
 
     if (exitCode !== 0) {
       throw new Error(`Failed to install PyTorch: exit code ${exitCode}`);
+    }
+  }
+
+  /**
+   * Installs AMD ROCm SDK packages on Windows.
+   * @param callbacks The callbacks to use for the command.
+   */
+  private async installAmdRocmSdk(callbacks?: ProcessCallbacks): Promise<void> {
+    if (process.platform !== 'win32') {
+      throw new Error('AMD ROCm packages are currently supported only on Windows.');
+    }
+
+    const installArgs = getPipInstallArgs({
+      packages: AMD_ROCM_SDK_PACKAGES,
+    });
+
+    log.info('Installing AMD ROCm SDK packages.');
+    const { exitCode } = await this.runUvCommandAsync(installArgs, callbacks);
+    if (exitCode !== 0) {
+      throw new Error(`Failed to install AMD ROCm SDK packages: exit code ${exitCode}`);
+    }
+  }
+
+  /**
+   * Installs AMD ROCm PyTorch wheels on Windows.
+   * @param callbacks The callbacks to use for the command.
+   */
+  private async installAmdTorch(callbacks?: ProcessCallbacks): Promise<void> {
+    if (process.platform !== 'win32') {
+      throw new Error('AMD ROCm packages are currently supported only on Windows.');
+    }
+
+    const installArgs = getPipInstallArgs({
+      packages: AMD_TORCH_PACKAGES,
+    });
+
+    log.info('Installing AMD ROCm PyTorch packages.');
+    const { exitCode } = await this.runUvCommandAsync(installArgs, callbacks);
+    if (exitCode !== 0) {
+      throw new Error(`Failed to install AMD ROCm PyTorch packages: exit code ${exitCode}`);
     }
   }
 
