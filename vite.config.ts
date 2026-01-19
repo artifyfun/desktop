@@ -6,7 +6,7 @@ import { defineConfig, mergeConfig } from 'vite';
 import { viteElectronAppPlugin } from './infrastructure/viteElectronAppPlugin';
 import { viteStaticAssetsPlugin } from './infrastructure/viteStaticAssetsPlugin';
 import { version } from './package.json';
-import { external, getBuildConfig } from './vite.base.config';
+import { external, getBuildConfig } from './vite.base';
 
 // https://vitejs.dev/config
 export default defineConfig((env) => {
