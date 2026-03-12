@@ -53,7 +53,7 @@ colorama==0.4.6
     #   click
     #   tqdm
     # from https://pypi.org/simple
-comfy-aimdo==0.2.1
+comfy-aimdo==0.2.8
     # via -r assets/ComfyUI/requirements.txt
     # from https://pypi.org/simple
 comfy-kitchen==0.2.7
@@ -65,22 +65,22 @@ comfyui-embedded-docs==0.4.3
 comfyui-manager==4.1b1
     # via -r assets/ComfyUI/manager_requirements.txt
     # from https://pypi.org/simple
-comfyui-workflow-templates==0.9.3
+comfyui-workflow-templates==0.9.11
     # via -r assets/ComfyUI/requirements.txt
     # from https://pypi.org/simple
-comfyui-workflow-templates-core==0.3.151
+comfyui-workflow-templates-core==0.3.159
     # via comfyui-workflow-templates
     # from https://pypi.org/simple
-comfyui-workflow-templates-media-api==0.3.54
+comfyui-workflow-templates-media-api==0.3.59
     # via comfyui-workflow-templates
     # from https://pypi.org/simple
-comfyui-workflow-templates-media-image==0.3.92
+comfyui-workflow-templates-media-image==0.3.98
     # via comfyui-workflow-templates
     # from https://pypi.org/simple
-comfyui-workflow-templates-media-other==0.3.126
+comfyui-workflow-templates-media-other==0.3.131
     # via comfyui-workflow-templates
     # from https://pypi.org/simple
-comfyui-workflow-templates-media-video==0.3.51
+comfyui-workflow-templates-media-video==0.3.57
     # via comfyui-workflow-templates
     # from https://pypi.org/simple
 cryptography==46.0.4
@@ -235,9 +235,6 @@ pynacl==1.6.2
 pyopengl==3.1.10
     # via -r assets/ComfyUI/requirements.txt
     # from https://pypi.org/simple
-pyopengl-accelerate==3.1.10
-    # via -r assets/ComfyUI/requirements.txt
-    # from https://pypi.org/simple
 python-dotenv==1.2.1
     # via pydantic-settings
     # from https://pypi.org/simple
@@ -281,6 +278,9 @@ shellingham==1.5.4
     # via
     #   huggingface-hub
     #   typer
+    # from https://pypi.org/simple
+simpleeval==1.0.3
+    # via -r assets/ComfyUI/requirements.txt
     # from https://pypi.org/simple
 smmap==5.0.2
     # via gitdb
