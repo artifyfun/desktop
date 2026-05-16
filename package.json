@@ -3,7 +3,7 @@
   "productName": "Artify",
   "repository": "github:artifyfun/desktop",
   "copyright": "Copyright © 2024 Comfy Org，Copyright © 2025 ArtifyFun",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "homepage": "https://space.bilibili.com/1584901",
   "description": "Make AI easier to use.",
   "main": ".vite/build/main.cjs",
@@ -11,18 +11,19 @@
   "type": "module",
   "config": {
     "frontend": {
-      "version": "1.42.15",
+      "version": "1.43.18",
       "optionalBranch": ""
     },
     "comfyUI": {
-      "version": "0.20.1",
+      "version": "0.21.1",
       "optionalBranch": ""
     },
     "managerCommit": "d82e1f5d677fec0b85a6be6beb1e32d5627ef6af",
     "uvVersion": "0.8.13"
   },
   "scripts": {
-    "clean": "rimraf .vite dist out",
+    "clean": "yarn clean:dist && yarn clean:assets && yarn make:assets",
+    "clean:dist": "rimraf .vite dist out",
     "clean:uv": "rimraf assets/uv",
     "clean:assets": "rimraf assets/.env assets/ComfyUI assets/python.tgz && yarn run clean:assets:git && yarn run clean:uv",
     "clean:assets:git": "rimraf assets/ComfyUI/.git assets/ComfyUI/custom_nodes/ComfyUI-Manager/.git",
